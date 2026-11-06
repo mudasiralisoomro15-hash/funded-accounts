@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Paste this in Firebase Console -> Firestore Database -> Rules -> Publish.
+// 1) Replace YOUR_ADMIN_EMAIL@gmail.com with your real admin email (keep the quotes).
+// 2) The admin must log in with Google (or a verified email) to pass the check.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['YOUR_ADMIN_EMAIL@gmail.com'];
+    }
+
+    // Site settings (plans, prices, texts): everyone can read, only admin can write.
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users: each person can create/update only their own record (never change role).
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'user';
+      allow update: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    // Orders: a customer can create their own pending order and read their own orders.
+    // Only admin can change status or delete.
+    match /orders/{orderId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if signedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+  }
+}
