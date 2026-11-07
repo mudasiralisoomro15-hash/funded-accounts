@@ -1,8 +1,13 @@
 rules_version = '2';
 
 // Paste this in Firebase Console -> Firestore Database -> Rules -> Publish.
-// 1) Replace mudasiralisoomro15@gmail.com with your real admin email (keep the quotes).
-// 2) The admin must log in with Google (or a verified email) to pass the check.
+// Replace mudasiralisoomro15@gmail.com with the OWNER email (keep the quotes).
+//
+// Roles:
+//   owner     = the email below. Can do everything, manages the admin team, approves requests.
+//   full      = admin added in the panel (admins/<email> with role 'full'). Edits go live directly.
+//   approval  = admin added in the panel with role 'approval'. Can READ admin data and send
+//               change requests, but cannot write anything to the live site.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -11,76 +16,105 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return signedIn()
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['mudasiralisoomro15@gmail.com'];
+    function verified() {
+      return signedIn() && request.auth.token.email_verified == true;
     }
 
-    // Site settings (plans, prices, texts): everyone can read, only admin can write.
+    function owner() {
+      return verified() && request.auth.token.email in ['mudasiralisoomro15@gmail.com'];
+    }
+
+    function hasAdminDoc() {
+      return verified()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    function adminRole() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role;
+    }
+
+    // Can change the live site / operations.
+    function fullAdmin() {
+      return owner() || (hasAdminDoc() && adminRole() == 'full');
+    }
+
+    // Can look at admin data (owner, full and approval admins).
+    function anyAdmin() {
+      return owner() || hasAdminDoc();
+    }
+
+    // Admin team: only the owner writes; an admin can read their own record.
+    match /admins/{email} {
+      allow read: if signedIn() && (request.auth.token.email == email || anyAdmin());
+      allow write: if owner();
+    }
+
+    // Edits suggested by "approval" admins. Only the owner can approve/reject.
+    match /changeRequests/{requestId} {
+      allow read: if anyAdmin();
+      allow create: if anyAdmin()
+                    && request.resource.data.requesterEmail == request.auth.token.email
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if owner();
+    }
+
+    // Site settings (plans, prices, texts): everyone can read, owner/full admins can write.
     match /config/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if fullAdmin();
     }
 
-    // Users: each person can create/update only their own record (never change role).
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == uid || anyAdmin());
       allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'user';
       allow update: if signedIn() && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;
-      allow delete: if isAdmin();
+      allow delete: if fullAdmin();
     }
 
-    // Orders: a customer can create their own pending order and read their own orders.
-    // Only admin can change status or delete.
     match /orders/{orderId} {
-      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || anyAdmin());
       allow create: if signedIn()
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.status == 'pending';
-      allow update, delete: if isAdmin();
+      allow update, delete: if fullAdmin();
     }
 
-    // Coupons: a signed-in customer can look up ONE code; only admin can list/write.
     match /coupons/{code} {
       allow get: if signedIn();
-      allow list, write: if isAdmin();
+      allow list: if anyAdmin();
+      allow write: if fullAdmin();
     }
 
-    // Payout requests: customer creates (pending) and reads own; admin manages.
     match /payouts/{payoutId} {
-      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || anyAdmin());
       allow create: if signedIn()
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.status == 'pending';
-      allow update, delete: if isAdmin();
+      allow update, delete: if fullAdmin();
     }
 
-    // KYC: one document per user (id = uid). Users can never approve themselves.
     match /kyc/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == uid || anyAdmin());
       allow create: if signedIn() && request.auth.uid == uid && request.resource.data.status == 'pending';
-      allow update: if isAdmin()
+      allow update: if fullAdmin()
                     || (signedIn() && request.auth.uid == uid
                         && resource.data.status == 'rejected'
                         && request.resource.data.status == 'pending');
-      allow delete: if isAdmin();
+      allow delete: if fullAdmin();
     }
 
-    // Referrals: created once by the new user when they sign up via a link.
     match /referrals/{uid} {
       allow create: if signedIn() && request.auth.uid == uid
                     && request.resource.data.referredUid == uid
                     && request.resource.data.referrerId != uid;
-      allow read: if signedIn() && (resource.data.referrerId == request.auth.uid || request.auth.uid == uid || isAdmin());
-      allow update, delete: if isAdmin();
+      allow read: if signedIn() && (resource.data.referrerId == request.auth.uid || request.auth.uid == uid || anyAdmin());
+      allow update, delete: if fullAdmin();
     }
 
-    // Commissions are written only by admin; the referrer can read their own.
     match /commissions/{commissionId} {
-      allow read: if signedIn() && (resource.data.referrerId == request.auth.uid || isAdmin());
-      allow write: if isAdmin();
+      allow read: if signedIn() && (resource.data.referrerId == request.auth.uid || anyAdmin());
+      allow write: if fullAdmin();
     }
   }
 }

@@ -107,3 +107,30 @@ export interface KycRecord {
   createdAt: string;
   note?: string;
 }
+
+/** "full" edits directly; "approval" can only suggest site changes (the owner approves). */
+export type AdminRole = "full" | "approval";
+
+export interface AdminRecord {
+  email: string;
+  role: AdminRole;
+  addedAt: string;
+  addedBy: string;
+}
+
+export type RequestStatus = "pending" | "approved" | "rejected";
+
+/** A site edit made by an "approval" admin, waiting for the owner. */
+export interface ChangeRequest {
+  id: string;
+  requesterEmail: string;
+  requesterName: string;
+  /** Human-readable list of what changed. */
+  summary: string[];
+  /** The new values of the changed top-level site settings. */
+  patch: Record<string, unknown>;
+  status: RequestStatus;
+  createdAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+}

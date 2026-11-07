@@ -14,7 +14,10 @@ import {
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { mergeConfig, type SiteConfig } from "./siteConfig";
 import type {
+  AdminRecord,
+  AdminRole,
   AppUser,
+  ChangeRequest,
   CommissionRecord,
   CommissionStatus,
   Coupon,
@@ -45,6 +48,8 @@ const KEYS = {
   referrals: "fx_referrals",
   commissions: "fx_commissions",
   ref: "fx_ref",
+  admins: "fx_admins",
+  requests: "fx_requests",
 };
 
 function lsGet<T>(key: string, fallback: T): T {
@@ -454,4 +459,79 @@ export async function syncCommissionForOrder(
     return { ...existing, status: "cancelled" };
   }
   return null;
+}
+
+// ───────────────────────── Admin team & change requests ─────────────────────────
+
+const emailId = (email: string) => email.trim().toLowerCase();
+
+/** The role of a non-owner admin, or null when this email is not an admin. */
+export async function getAdminRole(email: string): Promise<AdminRole | null> {
+  const id = emailId(email);
+  if (!isFirebaseConfigured) {
+    return lsGet<AdminRecord[]>(KEYS.admins, []).find((a) => a.email === id)?.role ?? null;
+  }
+  const snap = await getDoc(doc(getDb(), "admins", id));
+  return snap.exists() ? ((snap.data() as AdminRecord).role ?? null) : null;
+}
+
+export async function listAdmins(): Promise<AdminRecord[]> {
+  if (!isFirebaseConfigured) return lsGet<AdminRecord[]>(KEYS.admins, []);
+  const snap = await getDocs(collection(getDb(), "admins"));
+  return snap.docs.map((d) => d.data() as AdminRecord).sort((a, b) => a.addedAt.localeCompare(b.addedAt));
+}
+
+export async function saveAdmin(rec: AdminRecord): Promise<void> {
+  const admin = { ...rec, email: emailId(rec.email) };
+  if (!isFirebaseConfigured) {
+    const rest = lsGet<AdminRecord[]>(KEYS.admins, []).filter((a) => a.email !== admin.email);
+    lsSet(KEYS.admins, [...rest, admin]);
+    return;
+  }
+  await setDoc(doc(getDb(), "admins", admin.email), plain(admin));
+}
+
+export async function removeAdmin(email: string): Promise<void> {
+  const id = emailId(email);
+  if (!isFirebaseConfigured) {
+    lsSet(KEYS.admins, lsGet<AdminRecord[]>(KEYS.admins, []).filter((a) => a.email !== id));
+    return;
+  }
+  await deleteDoc(doc(getDb(), "admins", id));
+}
+
+export async function createChangeRequest(
+  input: Omit<ChangeRequest, "id" | "status" | "createdAt">
+): Promise<void> {
+  const data = { ...input, status: "pending" as const, createdAt: new Date().toISOString() };
+  if (!isFirebaseConfigured) {
+    const rec: ChangeRequest = { id: `req_${Date.now()}`, ...data };
+    lsSet(KEYS.requests, [rec, ...lsGet<ChangeRequest[]>(KEYS.requests, [])]);
+    return;
+  }
+  await addDoc(collection(getDb(), "changeRequests"), plain(data));
+}
+
+export async function listChangeRequests(): Promise<ChangeRequest[]> {
+  if (!isFirebaseConfigured) return lsGet<ChangeRequest[]>(KEYS.requests, []).sort(byNewest);
+  const snap = await getDocs(collection(getDb(), "changeRequests"));
+  return snap.docs
+    .map((d) => ({ ...(d.data() as Omit<ChangeRequest, "id">), id: d.id }))
+    .sort(byNewest);
+}
+
+export async function decideChangeRequest(
+  id: string,
+  status: "approved" | "rejected",
+  by: string
+): Promise<void> {
+  const fields = { status, decidedAt: new Date().toISOString(), decidedBy: by };
+  if (!isFirebaseConfigured) {
+    lsSet(
+      KEYS.requests,
+      lsGet<ChangeRequest[]>(KEYS.requests, []).map((r) => (r.id === id ? { ...r, ...fields } : r))
+    );
+    return;
+  }
+  await updateDoc(doc(getDb(), "changeRequests", id), fields);
 }

@@ -12,6 +12,8 @@ import {
   LogOut,
   Receipt,
   Gift,
+  Inbox,
+  UserCog,
   Ticket,
   Wallet,
   BadgeCheck,
@@ -23,7 +25,7 @@ import {
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import AuthModal, { type AuthMode } from "@/components/AuthModal";
-import { useAuth } from "@/components/AuthProvider";
+import { useAuth, type AdminLevel } from "@/components/AuthProvider";
 import { useSiteConfig } from "@/components/SiteConfigProvider";
 import PlansEditor from "@/components/admin/PlansEditor";
 import ContentEditor from "@/components/admin/ContentEditor";
@@ -33,10 +35,18 @@ import CouponsManager from "@/components/admin/CouponsManager";
 import PayoutsTable from "@/components/admin/PayoutsTable";
 import KycTable from "@/components/admin/KycTable";
 import ReferralsTable from "@/components/admin/ReferralsTable";
+import AdminsManager from "@/components/admin/AdminsManager";
+import RequestsPanel from "@/components/admin/RequestsPanel";
 import StatusBadge from "@/components/StatusBadge";
 import { Panel, formatDate } from "@/components/admin/ui";
 import {
+  createChangeRequest,
+  decideChangeRequest,
   deleteCoupon,
+  listAdmins,
+  listChangeRequests,
+  removeAdmin,
+  saveAdmin,
   listCommissions,
   syncCommissionForOrder,
   updateCommissionStatus,
@@ -51,9 +61,12 @@ import {
   updateOrderStatus,
   updatePayoutStatus,
 } from "@/lib/db";
-import { DEFAULT_SITE_CONFIG, cloneConfig, type SiteConfig } from "@/lib/siteConfig";
+import { diffConfig } from "@/lib/configDiff";
+import { DEFAULT_SITE_CONFIG, cloneConfig, mergeConfig, type SiteConfig } from "@/lib/siteConfig";
 import { formatSize, formatUSD } from "@/lib/plans";
 import type {
+  AdminRecord,
+  ChangeRequest,
   CommissionRecord,
   CommissionStatus,
   Coupon,
@@ -67,7 +80,18 @@ import type {
   UserRecord,
 } from "@/lib/types";
 
-type Tab = "overview" | "plans" | "content" | "users" | "orders" | "coupons" | "payouts" | "kyc" | "referrals";
+type Tab =
+  | "overview"
+  | "plans"
+  | "content"
+  | "users"
+  | "orders"
+  | "coupons"
+  | "payouts"
+  | "kyc"
+  | "referrals"
+  | "requests"
+  | "admins";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -79,6 +103,8 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "payouts", label: "Payouts", icon: Wallet },
   { id: "kyc", label: "KYC", icon: BadgeCheck },
   { id: "referrals", label: "Referrals", icon: Gift },
+  { id: "requests", label: "Requests", icon: Inbox },
+  { id: "admins", label: "Admins", icon: UserCog },
 ];
 
 function FullScreen({ children }: { children: React.ReactNode }) {
@@ -90,7 +116,7 @@ function FullScreen({ children }: { children: React.ReactNode }) {
 }
 
 export default function AdminPage() {
-  const { user, loading, isAdmin, demoMode, signOut } = useAuth();
+  const { user, loading, isAdmin, adminRole, demoMode, signOut } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const closeAuth = useCallback(() => setAuthOpen(false), []);
@@ -149,17 +175,32 @@ export default function AdminPage() {
     );
   }
 
-  return <AdminPanel email={user.email} demoMode={demoMode} onSignOut={() => void signOut()} />;
+  return (
+    <AdminPanel
+      email={user.email}
+      role={adminRole ?? "approval"}
+      demoMode={demoMode}
+      onSignOut={() => void signOut()}
+    />
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
 
+const ROLE_BADGE: Record<AdminLevel, string> = {
+  owner: "Owner",
+  full: "Full access",
+  approval: "Needs approval",
+};
+
 function AdminPanel({
   email,
+  role,
   demoMode,
   onSignOut,
 }: {
   email: string;
+  role: AdminLevel;
   demoMode: boolean;
   onSignOut: () => void;
 }) {
@@ -172,7 +213,7 @@ function AdminPanel({
           <div className="flex items-center gap-3">
             <Logo onDark />
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-blue-300 ring-1 ring-blue-400/30">
-              Admin
+              {ROLE_BADGE[role]}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -222,15 +263,18 @@ function AdminPanel({
           )}
         </div>
       ) : (
-        <Workspace />
+        <Workspace role={role} email={email} />
       )}
     </div>
   );
 }
 
 // Mounted only after the saved config has loaded, so the draft always starts from real data.
-function Workspace() {
+function Workspace({ role, email }: { role: AdminLevel; email: string }) {
+  const { user } = useAuth();
   const { config, save, resetToDefaults } = useSiteConfig();
+  const isOwner = role === "owner";
+  const needsApproval = role === "approval";
   const [tab, setTab] = useState<Tab>("overview");
   const [draft, setDraft] = useState<SiteConfig>(() => cloneConfig(config));
   const [saving, setSaving] = useState(false);
@@ -242,14 +286,26 @@ function Workspace() {
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [kyc, setKyc] = useState<KycRecord[]>([]);
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
+  const [admins, setAdmins] = useState<AdminRecord[]>([]);
+  const [requests, setRequests] = useState<ChangeRequest[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(config), [draft, config]);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listUsers(), listOrders(), listCoupons(), listPayouts(), listKyc(), listCommissions()])
-      .then(([u, o, c, p, k, cm]) => {
+    Promise.all([
+      listUsers(),
+      listOrders(),
+      listCoupons(),
+      listPayouts(),
+      listKyc(),
+      // Newer collections: if their rules are not published yet, the rest of the panel still works.
+      listCommissions().catch(() => [] as CommissionRecord[]),
+      listAdmins().catch(() => [] as AdminRecord[]),
+      listChangeRequests().catch(() => [] as ChangeRequest[]),
+    ])
+      .then(([u, o, c, p, k, cm, ad, rq]) => {
         if (!alive) return;
         setUsers(u);
         setOrders(o);
@@ -257,6 +313,8 @@ function Workspace() {
         setPayouts(p);
         setKyc(k);
         setCommissions(cm);
+        setAdmins(ad);
+        setRequests(rq);
       })
       .catch((e) => {
         if (alive) setDataError(e instanceof Error ? e.message : "Could not load users/orders.");
@@ -284,10 +342,34 @@ function Workspace() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
+  /** Approval-level admins cannot change operational data (orders, payouts, ...). */
+  function blocked(): boolean {
+    if (!needsApproval) return false;
+    setNotice({ type: "err", text: "Your access level can only suggest website edits (the owner approves them)." });
+    return true;
+  }
+
   async function handleSave() {
     setSaving(true);
     setNotice(null);
     try {
+      if (needsApproval) {
+        const { summary, patch } = diffConfig(config, draft);
+        if (summary.length === 0) {
+          setNotice({ type: "err", text: "Nothing changed." });
+          return;
+        }
+        await createChangeRequest({
+          requesterEmail: email,
+          requesterName: user?.name ?? email,
+          summary,
+          patch,
+        });
+        setRequests(await listChangeRequests());
+        setDraft(cloneConfig(config));
+        setNotice({ type: "ok", text: "Sent to the owner for approval. It goes live once approved." });
+        return;
+      }
       await save(draft);
       setNotice({ type: "ok", text: "Saved. Your website is updated." });
     } catch (e) {
@@ -298,6 +380,7 @@ function Workspace() {
   }
 
   async function handleReset() {
+    if (blocked()) return;
     if (!window.confirm("Reset ALL plans, prices and content back to the original defaults?")) return;
     setSaving(true);
     setNotice(null);
@@ -313,6 +396,7 @@ function Workspace() {
   }
 
   async function handleStatus(id: string, status: OrderStatus) {
+    if (blocked()) return;
     const previous = orders;
     setOrders((list) => list.map((o) => (o.id === id ? { ...o, status } : o)));
     try {
@@ -329,21 +413,25 @@ function Workspace() {
   }
 
   async function handleCredentials(id: string, credentials: OrderCredentials) {
+    if (needsApproval) throw new Error("Not allowed");
     await updateOrderCredentials(id, credentials);
     setOrders((list) => list.map((o) => (o.id === id ? { ...o, credentials } : o)));
   }
 
   async function handleCouponSave(c: Coupon) {
+    if (needsApproval) throw new Error("Your access level cannot change coupons.");
     await saveCoupon(c);
     setCoupons(await listCoupons());
   }
 
   async function handleCouponDelete(code: string) {
+    if (needsApproval) return;
     await deleteCoupon(code);
     setCoupons((list) => list.filter((c) => c.code !== code));
   }
 
   async function handlePayout(id: string, status: PayoutStatus) {
+    if (blocked()) return;
     const previous = payouts;
     setPayouts((list) => list.map((p) => (p.id === id ? { ...p, status } : p)));
     try {
@@ -355,6 +443,7 @@ function Workspace() {
   }
 
   async function handleCommission(id: string, status: CommissionStatus) {
+    if (blocked()) return;
     const previous = commissions;
     setCommissions((list) => list.map((c) => (c.id === id ? { ...c, status } : c)));
     try {
@@ -366,6 +455,7 @@ function Workspace() {
   }
 
   async function handleKyc(userId: string, status: KycStatus) {
+    if (blocked()) return;
     const previous = kyc;
     setKyc((list) => list.map((k) => (k.userId === userId ? { ...k, status } : k)));
     try {
@@ -376,6 +466,23 @@ function Workspace() {
     }
   }
 
+  async function handleDecide(req: ChangeRequest, status: "approved" | "rejected") {
+    try {
+      if (status === "approved") {
+        const next = mergeConfig({ ...config, ...req.patch } as Partial<SiteConfig>);
+        await save(next);
+        if (!dirty) setDraft(cloneConfig(next));
+      }
+      await decideChangeRequest(req.id, status, email);
+      setRequests(await listChangeRequests());
+      setNotice({ type: "ok", text: status === "approved" ? "Approved and published." : "Request rejected." });
+    } catch (e) {
+      setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not process the request." });
+    }
+  }
+
+  const pendingRequests = requests.filter((r) => r.status === "pending").length;
+
   const pending = orders.filter((o) => o.status === "pending").length;
   const revenue = orders
     .filter((o) => o.status === "paid" || o.status === "active")
@@ -385,7 +492,7 @@ function Workspace() {
     <div className="mx-auto max-w-7xl px-4 pb-32 pt-6 sm:px-6 lg:px-8">
       {/* Tabs */}
       <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" aria-label="Admin sections">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {TABS.filter((t) => t.id !== "admins" || isOwner).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -398,6 +505,9 @@ function Workspace() {
           >
             <Icon className="h-4 w-4" />
             {label}
+            {id === "requests" && isOwner && pendingRequests > 0 && (
+              <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{pendingRequests}</span>
+            )}
           </button>
         ))}
       </nav>
@@ -500,6 +610,23 @@ function Workspace() {
         )}
         {tab === "payouts" && <PayoutsTable payouts={payouts} onStatusChange={handlePayout} />}
         {tab === "kyc" && <KycTable items={kyc} onDecision={handleKyc} />}
+        {tab === "requests" && (
+          <RequestsPanel requests={requests} isOwner={isOwner} myEmail={email} onDecide={handleDecide} />
+        )}
+        {tab === "admins" && isOwner && (
+          <AdminsManager
+            admins={admins}
+            ownerEmail={email}
+            onSave={async (rec) => {
+              await saveAdmin(rec);
+              setAdmins(await listAdmins());
+            }}
+            onRemove={async (e) => {
+              await removeAdmin(e);
+              setAdmins((list) => list.filter((a) => a.email !== e));
+            }}
+          />
+        )}
         {tab === "referrals" && (
           <ReferralsTable commissions={commissions} users={users} ratePct={config.referralPct} onStatusChange={handleCommission} />
         )}
@@ -540,7 +667,7 @@ function Workspace() {
               {dirty && (
                 <button type="button" onClick={handleSave} disabled={saving} className="btn-glow px-5 py-2.5 text-sm">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Save changes
+                  {needsApproval ? "Send for approval" : "Save changes"}
                 </button>
               )}
             </div>
