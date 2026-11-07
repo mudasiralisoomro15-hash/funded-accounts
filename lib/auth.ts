@@ -26,7 +26,7 @@ export interface AuthResult {
 // ───────────────────────── helpers ─────────────────────────
 
 export function isAdminEmail(email: string): boolean {
-  const list = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+  const list = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "mudasiralisoomro15@gmail.com")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);

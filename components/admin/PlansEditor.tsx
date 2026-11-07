@@ -114,6 +114,16 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
               onChange={(e) => patch({ maxDrawdownPct: num(e.target.value, 100) })}
             />
           </Field>
+          <Field label="Funded max drawdown (%)">
+            <input
+              type="number"
+              min={0}
+              step="0.5"
+              className={inputCls}
+              value={m.fundedMaxDdPct}
+              onChange={(e) => patch({ fundedMaxDdPct: num(e.target.value, 100) })}
+            />
+          </Field>
           <Field label="Discount (%)" hint="0 hides the discount pill and old price.">
             <input
               type="number"

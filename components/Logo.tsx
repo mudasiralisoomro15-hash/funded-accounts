@@ -20,10 +20,10 @@ export default function Logo({ className = "", onDark = false }: { className?: s
         </svg>
       </span>
       <span
-        className={`font-display text-xl font-bold tracking-tight ${onDark ? "text-white" : "text-slate-900"}`}
+        className={`font-display text-xl font-bold tracking-tight ${"text-white"}`}
       >
         {name.slice(0, -1)}
-        <span className={onDark ? "text-blue-400" : "text-blue-600"}>{name.slice(-1)}</span>
+        <span className={"text-blue-400"}>{name.slice(-1)}</span>
       </span>
     </Link>
   );

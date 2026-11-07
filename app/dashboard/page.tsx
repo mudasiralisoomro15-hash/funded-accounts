@@ -6,6 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useMyOrders } from "@/components/dashboard/useMyOrders";
 import { DashStatus, EmptyState, PageHeader } from "@/components/dashboard/ui";
 import { formatDate } from "@/components/admin/ui";
+import AccountCard from "@/components/dashboard/AccountCard";
 import { formatSize, formatUSD } from "@/lib/plans";
 
 export default function OverviewPage() {
@@ -14,6 +15,7 @@ export default function OverviewPage() {
 
   const list = orders ?? [];
   const active = list.filter((o) => o.status === "active");
+  const accounts = list.filter((o) => o.status !== "cancelled");
   const pending = list.filter((o) => o.status === "pending").length;
   const invested = list.filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.price, 0);
 
@@ -52,14 +54,14 @@ export default function OverviewPage() {
       )}
 
       <section className="dash-card mt-6">
-        <h2 className="dash-text dash-border border-b px-5 py-4 font-semibold">My Accounts</h2>
+        <h2 className="dash-text dash-border border-b px-5 py-4 font-semibold">Accounts Overview</h2>
         {orders === null && !error ? (
           <Loader2 className="dash-primary-text mx-auto my-10 h-6 w-6 animate-spin" />
-        ) : active.length === 0 ? (
+        ) : accounts.length === 0 ? (
           <EmptyState
             icon={Wallet}
-            title="No active accounts yet"
-            text="Once your order is confirmed and activated, your trading account appears here."
+            title="No accounts yet"
+            text="Start a challenge. Your accounts appear here, and turn Ongoing once activated."
             action={
               <Link href="/#models" className="dash-btn">
                 View Funded Plans
@@ -67,16 +69,9 @@ export default function OverviewPage() {
             }
           />
         ) : (
-          <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-            {active.map((o) => (
-              <div key={o.id} className="dash-border rounded-lg border p-4">
-                <div className="flex items-center justify-between">
-                  <p className="dash-text font-semibold">{o.modelName}</p>
-                  <DashStatus status={o.status} />
-                </div>
-                <p className="dash-primary-text mt-2 text-2xl font-bold">{formatSize(o.size)}</p>
-                <p className="dash-sub mt-1 text-xs">Login details are sent by support after activation.</p>
-              </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {accounts.map((o) => (
+              <AccountCard key={o.id} order={o} />
             ))}
           </div>
         )}

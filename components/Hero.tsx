@@ -19,16 +19,16 @@ export default function Hero() {
   const size = 10000 as const;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white pb-16 pt-32 sm:pb-24 sm:pt-40">
+    <section className="relative overflow-hidden bg-[#07090d] pb-16 pt-32 sm:pb-24 sm:pt-40">
       {/* Decorative background */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-blue-200/50 blur-3xl" />
-        <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-cyan-200/40 blur-3xl" />
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-blue-600/25 blur-3xl" />
+        <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl" />
         <div
           className="absolute inset-0 opacity-[0.5]"
           style={{
             backgroundImage:
-              "linear-gradient(to right, rgba(37,99,235,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(37,99,235,0.07) 1px, transparent 1px)",
+              "linear-gradient(to right, rgba(59,130,246,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(59,130,246,0.10) 1px, transparent 1px)",
             backgroundSize: "56px 56px",
             maskImage: "radial-gradient(ellipse at top, black 25%, transparent 70%)",
             WebkitMaskImage: "radial-gradient(ellipse at top, black 25%, transparent 70%)",
@@ -39,17 +39,17 @@ export default function Hero() {
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-8 lg:px-8">
         {/* Copy */}
         <div className="text-center lg:text-left">
-          <span className="inline-flex animate-fade-in-up items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-1.5 text-xs font-semibold text-blue-700 shadow-sm sm:text-sm">
+          <span className="inline-flex animate-fade-in-up items-center gap-2 rounded-full border border-blue-500/30 bg-[#10141c] px-4 py-1.5 text-xs font-semibold text-blue-300 shadow-none sm:text-sm">
             {config.hero.badge}
           </span>
 
-          <h1 className="mt-6 animate-fade-in-up font-display text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 [animation-delay:80ms] sm:text-5xl lg:text-6xl">
+          <h1 className="mt-6 animate-fade-in-up font-display text-4xl font-bold leading-[1.1] tracking-tight text-white [animation-delay:80ms] sm:text-5xl lg:text-6xl">
             {config.hero.headlineTop}
             <br />
             <span className="text-gradient">{config.hero.headlineAccent}</span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-xl animate-fade-in-up text-base leading-relaxed text-slate-600 [animation-delay:160ms] sm:text-lg lg:mx-0">
+          <p className="mx-auto mt-6 max-w-xl animate-fade-in-up text-base leading-relaxed text-slate-400 [animation-delay:160ms] sm:text-lg lg:mx-0">
             {config.hero.subheadline}
           </p>
 
@@ -60,7 +60,7 @@ export default function Hero() {
             </a>
             <a
               href="#how"
-              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-[#10141c] px-8 py-4 text-base font-semibold text-slate-300 shadow-none transition hover:border-blue-500/50 hover:text-blue-300 sm:w-auto"
             >
               How it works
             </a>
@@ -70,9 +70,9 @@ export default function Hero() {
             {TRUST.map(({ icon: Icon, label }) => (
               <li
                 key={label}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm sm:text-sm"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#10141c] px-3.5 py-2 text-xs font-medium text-slate-300 shadow-none sm:text-sm"
               >
-                <Icon className="h-4 w-4 text-blue-600" />
+                <Icon className="h-4 w-4 text-blue-400" />
                 {label}
               </li>
             ))}
@@ -82,11 +82,11 @@ export default function Hero() {
         {/* Preview card */}
         {model && (
           <div className="relative mx-auto w-full max-w-md animate-fade-in-up [animation-delay:200ms]">
-            <div aria-hidden="true" className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-blue-300/40 to-cyan-200/40 blur-2xl" />
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div aria-hidden="true" className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-blue-600/30 to-cyan-500/20 blur-2xl" />
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#10141c] shadow-2xl">
               <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-white">
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                  <span className="rounded-full bg-[#07090d]/20 px-3 py-1 text-xs font-semibold">
                     {model.drawdownType} Drawdown
                   </span>
                   <Wallet className="h-5 w-5 text-blue-100" />
@@ -112,7 +112,7 @@ export default function Hero() {
                   />
                 </svg>
               </div>
-              <dl className="divide-y divide-slate-100 px-6 py-2 text-sm">
+              <dl className="divide-y divide-white/10 px-6 py-2 text-sm">
                 {[
                   ["Daily Loss Limit", `${model.dailyLossPct}%`],
                   ["Max Drawdown", `${model.maxDrawdownPct}%`],
@@ -120,13 +120,13 @@ export default function Hero() {
                   ["Profit Split", model.profitSplit],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between py-3">
-                    <dt className="text-slate-500">{k}</dt>
-                    <dd className="font-semibold text-slate-900">{v}</dd>
+                    <dt className="text-slate-400">{k}</dt>
+                    <dd className="font-semibold text-white">{v}</dd>
                   </div>
                 ))}
               </dl>
-              <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-6 py-3 text-xs text-slate-600">
-                <Check className="h-4 w-4 text-blue-600" /> {formatSize(size)} account shown
+              <div className="flex items-center gap-2 border-t border-white/10 bg-[#0a0d13] px-6 py-3 text-xs text-slate-400">
+                <Check className="h-4 w-4 text-blue-400" /> {formatSize(size)} account shown
               </div>
             </div>
           </div>

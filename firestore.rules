@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // Paste this in Firebase Console -> Firestore Database -> Rules -> Publish.
-// 1) Replace YOUR_ADMIN_EMAIL@gmail.com with your real admin email (keep the quotes).
+// 1) Replace mudasiralisoomro15@gmail.com with your real admin email (keep the quotes).
 // 2) The admin must log in with Google (or a verified email) to pass the check.
 
 service cloud.firestore {
@@ -14,7 +14,7 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn()
         && request.auth.token.email_verified == true
-        && request.auth.token.email in ['YOUR_ADMIN_EMAIL@gmail.com'];
+        && request.auth.token.email in ['mudasiralisoomro15@gmail.com'];
     }
 
     // Site settings (plans, prices, texts): everyone can read, only admin can write.
