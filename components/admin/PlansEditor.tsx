@@ -1,17 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { ACCOUNT_SIZES, formatSize, formatUSD, getListPrice, type AccountSize, type DrawdownType, type ModelConfig } from "@/lib/plans";
+import { MoveLeft, MoveRight, Plus, Trash2 } from "lucide-react";
+import { ACCOUNT_SIZES, formatSize, formatUSD, getListPrice, makeBlankModel, type AccountSize, type DrawdownType, type ModelConfig } from "@/lib/plans";
+import type { SiteConfig } from "@/lib/siteConfig";
 import { Field, Panel, Toggle, inputCls } from "./ui";
 
 interface PlansEditorProps {
-  models: ModelConfig[];
-  onChange: (models: ModelConfig[]) => void;
+  config: SiteConfig;
+  onChange: (config: SiteConfig) => void;
 }
 
 const num = (v: string, max = 100000) => Math.min(max, Math.max(0, Number(v) || 0));
 
-export default function PlansEditor({ models, onChange }: PlansEditorProps) {
+export default function PlansEditor({ config, onChange: onConfig }: PlansEditorProps) {
+  const models = config.models;
+  const onChange = (next: ModelConfig[]) => onConfig({ ...config, models: next });
   const [selectedId, setSelectedId] = useState(models[0]?.id ?? "");
   const m = models.find((x) => x.id === selectedId) ?? models[0];
   if (!m) return null;
@@ -24,8 +28,48 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
   const setPrice = (size: AccountSize, value: number) =>
     patch({ prices: { ...m.prices, [size]: value } });
 
+  const groups = Array.from(new Set(models.map((x) => x.group)));
+  const index = models.findIndex((x) => x.id === m.id);
+
+  function addPlan() {
+    const fresh = makeBlankModel(m, `${m.name} Copy`);
+    onChange([...models, fresh]);
+    setSelectedId(fresh.id);
+  }
+
+  function removePlan() {
+    if (models.length <= 1) return;
+    if (!window.confirm(`Delete the plan "${m.name}"? This cannot be undone after you save.`)) return;
+    const rest = models.filter((x) => x.id !== m.id);
+    onChange(rest);
+    setSelectedId(rest[0].id);
+  }
+
+  function move(dir: -1 | 1) {
+    const j = index + dir;
+    if (j < 0 || j >= models.length) return;
+    const next = [...models];
+    [next[index], next[j]] = [next[j], next[index]];
+    onChange(next);
+  }
+
   return (
     <div className="space-y-5">
+      <Panel title="Pricing section" subtitle='Which account size shows the orange "Best value" badge.'>
+        <select
+          className={`${inputCls} max-w-xs`}
+          value={config.bestValueSize}
+          onChange={(e) => onConfig({ ...config, bestValueSize: Number(e.target.value) })}
+        >
+          <option value={0}>No badge</option>
+          {ACCOUNT_SIZES.map((sz) => (
+            <option key={sz} value={sz}>
+              {formatSize(sz)}
+            </option>
+          ))}
+        </select>
+      </Panel>
+
       {/* Model picker */}
       <div className="flex flex-wrap gap-2">
         {models.map((x) => (
@@ -43,6 +87,22 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
             {!x.enabled && <span className="ml-2 text-[10px] uppercase text-amber-300">hidden</span>}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={addPlan} className="btn-glow px-4 py-2 text-sm">
+          <Plus className="h-4 w-4" /> Add new plan <span className="hidden sm:inline">(copy of this one)</span>
+        </button>
+        <button type="button" onClick={() => move(-1)} disabled={index <= 0} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5 disabled:opacity-40">
+          <MoveLeft className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={() => move(1)} disabled={index >= models.length - 1} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5 disabled:opacity-40">
+          <MoveRight className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={removePlan} disabled={models.length <= 1} className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-40">
+          <Trash2 className="h-4 w-4" /> Delete this plan
+        </button>
+        <span className="text-xs text-slate-500">Changes go live after “Save changes”.</span>
       </div>
 
       <Panel
@@ -80,8 +140,16 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
           <Field label="Model name">
             <input className={inputCls} value={m.name} onChange={(e) => patch({ name: e.target.value })} />
           </Field>
-          <Field label="Tab label">
-            <input className={inputCls} value={m.tabLabel} onChange={(e) => patch({ tabLabel: e.target.value })} />
+          <Field label="Group (top tab)" hint='Plans with the same group share one tab, e.g. "2 Step". Type a new name to create a new tab.'>
+            <input className={inputCls} list="plan-groups" value={m.group} onChange={(e) => patch({ group: e.target.value })} />
+            <datalist id="plan-groups">
+              {groups.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="Orange tag text" hint='Optional, e.g. "New" or "Hot". Empty = none.'>
+            <input className={inputCls} maxLength={12} value={m.badge ?? ""} onChange={(e) => patch({ badge: e.target.value })} />
           </Field>
           <Field label="Drawdown type">
             <select
@@ -173,7 +241,7 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
           <Toggle
             checked={!!m.popular}
             onChange={(v) => patch({ popular: v })}
-            label='Show "Popular" badge'
+            label='Mark as Popular (opens first + orange "Popular" tag)'
           />
         </div>
       </Panel>

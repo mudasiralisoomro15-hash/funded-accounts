@@ -5,11 +5,8 @@ import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { useSiteConfig } from "./SiteConfigProvider";
 import {
   ACCOUNT_SIZES,
-  BEST_VALUE_SIZE,
-  MODEL_GROUPS,
   formatUSD,
   getListPrice,
-  groupOf,
   type AccountSize,
   type ModelId,
   type PlanSelection,
@@ -39,15 +36,18 @@ function Phases({ value }: { value: string }) {
 export default function PricingSection({ onBuy }: PricingSectionProps) {
   const { config } = useSiteConfig();
   const models = config.models.filter((m) => m.enabled);
-  const [modelId, setModelId] = useState<ModelId>("one-step");
-  const [size, setSize] = useState<AccountSize>(BEST_VALUE_SIZE);
+  const bestSize = config.bestValueSize;
+  const [modelId, setModelId] = useState<ModelId | null>(null);
+  const [pickedSize, setPickedSize] = useState<AccountSize | null>(null);
+  const size: AccountSize = pickedSize ?? ((ACCOUNT_SIZES as readonly number[]).includes(bestSize) ? (bestSize as AccountSize) : 10000);
+  const setSize = (s: AccountSize) => setPickedSize(s);
 
-  const model = models.find((m) => m.id === modelId) ?? models[0];
+  const model = models.find((m) => m.id === modelId) ?? models.find((m) => m.popular) ?? models[0];
   if (!model) return null;
 
-  const activeGroup = groupOf(model.id);
-  const groups = MODEL_GROUPS.filter((g) => models.some((m) => m.id.startsWith(g.prefix)));
-  const variants = models.filter((m) => m.id.startsWith(activeGroup.prefix));
+  const groups = Array.from(new Set(models.map((m) => m.group)));
+  const activeGroup = model.group;
+  const variants = models.filter((m) => m.group === activeGroup);
 
   const price = model.prices[size];
   const listPrice = getListPrice(model, size);
@@ -90,15 +90,15 @@ export default function PricingSection({ onBuy }: PricingSectionProps) {
           style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
         >
           {groups.map((g) => {
-            const active = g.key === activeGroup.key;
+            const active = g === activeGroup;
             return (
               <button
-                key={g.key}
+                key={g}
                 type="button"
                 role="tab"
                 aria-selected={active}
                 onClick={() => {
-                  const first = models.find((m) => m.id.startsWith(g.prefix));
+                  const first = models.find((m) => m.group === g);
                   if (first) setModelId(first.id);
                 }}
                 className={`rounded-xl px-3 py-3 text-sm font-semibold transition-all ${
@@ -107,16 +107,16 @@ export default function PricingSection({ onBuy }: PricingSectionProps) {
                     : "text-slate-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                {g.label}
+                {g}
               </button>
             );
           })}
         </div>
 
         {/* Variant tabs */}
-        {variants.length > 1 && (
+        {(variants.length > 1 || variants.some((v) => v.badge || v.popular)) && (
           <div role="tablist" aria-label="Variant" className="mt-3 flex flex-wrap gap-1.5 rounded-2xl border border-white/10 bg-[#10141c] p-1.5">
-            {variants.map((m, i) => {
+            {variants.map((m) => {
               const active = m.id === model.id;
               return (
                 <button
@@ -130,8 +130,10 @@ export default function PricingSection({ onBuy }: PricingSectionProps) {
                   }`}
                 >
                   {m.name}
-                  {i > 0 && (
-                    <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">New</span>
+                  {(m.badge || m.popular) && (
+                    <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                      {m.badge || "Popular"}
+                    </span>
                   )}
                 </button>
               );
@@ -158,7 +160,7 @@ export default function PricingSection({ onBuy }: PricingSectionProps) {
                     : "border-white/10 bg-[#10141c] text-slate-300 hover:border-white/25"
                 }`}
               >
-                {s === BEST_VALUE_SIZE && (
+                {s === bestSize && (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                     Best value
                   </span>

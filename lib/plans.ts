@@ -18,6 +18,10 @@ export type DrawdownType = "Static" | "Trailing";
 export interface ModelConfig {
   id: ModelId;
   name: string;
+  /** Which top tab it sits under on the pricing section (e.g. "2 Step"). Same text = same tab. */
+  group: string;
+  /** Optional orange tag next to the plan name (e.g. "New", "Hot"). */
+  badge?: string;
   tabLabel: string;
   tagline: string;
   drawdownType: DrawdownType;
@@ -57,6 +61,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
   {
     ...COMMON,
     id: "one-step",
+    group: "1 Step",
     fundedMaxDdPct: 45,
     name: "1 Step",
     tabLabel: "1 Step",
@@ -70,6 +75,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
   {
     ...COMMON,
     id: "one-step-pro",
+    group: "1 Step",
     fundedMaxDdPct: 60,
     name: "1 Step Pro",
     tabLabel: "1 Step Pro",
@@ -82,6 +88,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
   {
     ...COMMON,
     id: "two-step",
+    group: "2 Step",
     fundedMaxDdPct: 35,
     name: "2 Step",
     tabLabel: "2 Step",
@@ -94,6 +101,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
   {
     ...COMMON,
     id: "two-step-prime",
+    group: "2 Step",
     fundedMaxDdPct: 50,
     name: "2 Step Prime",
     tabLabel: "2 Step Prime",
@@ -106,6 +114,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
   {
     ...COMMON,
     id: "two-step-pro",
+    group: "2 Step",
     fundedMaxDdPct: 60,
     name: "2 Step Pro",
     tabLabel: "2 Step Pro",
@@ -118,6 +127,7 @@ export const DEFAULT_MODELS: ModelConfig[] = [
   {
     ...COMMON,
     id: "three-step",
+    group: "3 Step",
     fundedMaxDdPct: 80,
     name: "3 Step",
     tabLabel: "3 Step",
@@ -155,14 +165,19 @@ export const formatUSD = (n: number): string => usd.format(n);
 export const formatSize = (n: number): string =>
   n >= 1000 ? `$${n / 1000}K` : `$${n}`;
 
-/** Top-level tabs on the pricing section (1 Step / 2 Step / 3 Step). */
-export const MODEL_GROUPS = [
-  { key: "one", label: "1 Step", prefix: "one-step" },
-  { key: "two", label: "2 Step", prefix: "two-step" },
-  { key: "three", label: "3 Step", prefix: "three-step" },
-] as const;
-
-export const groupOf = (id: string) => MODEL_GROUPS.find((g) => id.startsWith(g.prefix)) ?? MODEL_GROUPS[0];
-
-/** The size that gets the orange "Best value" badge. */
+/** Default size that gets the orange "Best value" badge (editable in admin). */
 export const BEST_VALUE_SIZE: AccountSize = 50000;
+
+/** A new plan, copied from `from` so every field already has a sensible value. */
+export function makeBlankModel(from: ModelConfig, name = "New Plan"): ModelConfig {
+  return {
+    ...from,
+    id: `custom-${Date.now().toString(36)}`,
+    name,
+    tabLabel: name,
+    badge: "",
+    popular: false,
+    enabled: true,
+    prices: { ...from.prices },
+  };
+}

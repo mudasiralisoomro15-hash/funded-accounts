@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, InputHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
@@ -62,6 +63,7 @@ function FormField({ icon: Icon, label, rightSlot, ...props }: Field) {
 }
 
 export default function AuthModal({ open, mode, order, onClose, onModeChange }: AuthModalProps) {
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const { config } = useSiteConfig();
 
@@ -91,6 +93,16 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
+
+  // After an order is saved, show the confirmation for a moment, then open the dashboard.
+  useEffect(() => {
+    if (!success || !order) return;
+    const t = setTimeout(() => {
+      onClose();
+      router.push("/dashboard");
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [success, order, onClose, router]);
 
   // Fresh status whenever the modal opens or the tab changes.
   useEffect(() => {
@@ -190,7 +202,10 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
       });
       return;
     }
-    setSuccess({ title: isSignup ? "Account created" : "Signed in", text: res.message });
+    // Plain sign in / sign up: close the popup and go straight to the dashboard
+    // (the /admin page keeps its own flow).
+    onClose();
+    if (!window.location.pathname.startsWith("/admin")) router.push("/dashboard");
   }
 
   function errorText(err: unknown): string {

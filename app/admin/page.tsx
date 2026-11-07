@@ -462,7 +462,7 @@ function Workspace() {
         )}
 
         {tab === "plans" && (
-          <PlansEditor models={draft.models} onChange={(models) => setDraft({ ...draft, models })} />
+          <PlansEditor config={draft} onChange={setDraft} />
         )}
         {tab === "content" && <ContentEditor config={draft} onChange={setDraft} />}
         {tab === "users" && <UsersTable users={users} />}

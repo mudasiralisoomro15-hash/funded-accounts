@@ -22,6 +22,8 @@ export interface SiteConfig {
     subheadline: string;
   };
   models: ModelConfig[];
+  /** Account size that gets the orange "Best value" badge (0 = none). */
+  bestValueSize: number;
   faqs: FaqItem[];
 }
 
@@ -87,6 +89,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
       "1, 2 and 3 Step challenges, accounts up to $100K, daily payouts and no maximum trading period.",
   },
   models: DEFAULT_MODELS,
+  bestValueSize: 50000,
   faqs: DEFAULT_FAQS,
 };
 
@@ -99,11 +102,19 @@ export function mergeConfig(saved: Partial<SiteConfig> | null | undefined): Site
   const base = cloneConfig(DEFAULT_SITE_CONFIG);
   if (!saved) return base;
 
-  const models = base.models.map((def) => {
-    const s = saved.models?.find((m) => m.id === def.id);
-    if (!s) return def;
-    return { ...def, ...s, prices: { ...def.prices, ...(s.prices ?? {}) } };
-  });
+  const tpl = base.models[0];
+  const models =
+    Array.isArray(saved.models) && saved.models.length > 0
+      ? saved.models.map((sm) => {
+          const def = base.models.find((d) => d.id === sm.id) ?? tpl;
+          return {
+            ...def,
+            ...sm,
+            group: sm.group || def.group,
+            prices: { ...def.prices, ...(sm.prices ?? {}) },
+          };
+        })
+      : base.models;
 
   return {
     brandName: saved.brandName?.trim() || base.brandName,
@@ -111,6 +122,7 @@ export function mergeConfig(saved: Partial<SiteConfig> | null | undefined): Site
     announcement: { ...base.announcement, ...(saved.announcement ?? {}) },
     hero: { ...base.hero, ...(saved.hero ?? {}) },
     models,
+    bestValueSize: typeof saved.bestValueSize === "number" ? saved.bestValueSize : base.bestValueSize,
     faqs: Array.isArray(saved.faqs) ? saved.faqs : base.faqs,
   };
 }
