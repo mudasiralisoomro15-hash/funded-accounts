@@ -41,5 +41,31 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending';
       allow update, delete: if isAdmin();
     }
+
+    // Coupons: a signed-in customer can look up ONE code; only admin can list/write.
+    match /coupons/{code} {
+      allow get: if signedIn();
+      allow list, write: if isAdmin();
+    }
+
+    // Payout requests: customer creates (pending) and reads own; admin manages.
+    match /payouts/{payoutId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if signedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // KYC: one document per user (id = uid). Users can never approve themselves.
+    match /kyc/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.status == 'pending';
+      allow update: if isAdmin()
+                    || (signedIn() && request.auth.uid == uid
+                        && resource.data.status == 'rejected'
+                        && request.resource.data.status == 'pending');
+      allow delete: if isAdmin();
+    }
   }
 }

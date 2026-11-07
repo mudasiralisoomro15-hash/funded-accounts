@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -12,13 +13,33 @@ import {
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { mergeConfig, type SiteConfig } from "./siteConfig";
-import type { AppUser, NewOrder, OrderRecord, OrderStatus, UserRecord } from "./types";
+import type {
+  AppUser,
+  Coupon,
+  KycRecord,
+  KycStatus,
+  NewOrder,
+  NewPayout,
+  OrderCredentials,
+  OrderRecord,
+  OrderStatus,
+  PayoutRecord,
+  PayoutStatus,
+  UserRecord,
+} from "./types";
 
 // One data layer, two backends:
 //  - Firebase configured  -> Firestore (shared, real data)
 //  - not configured       -> localStorage (DEMO mode, this browser only)
 
-const KEYS = { config: "fx_config", users: "fx_users", orders: "fx_orders" };
+const KEYS = {
+  config: "fx_config",
+  users: "fx_users",
+  orders: "fx_orders",
+  coupons: "fx_coupons",
+  payouts: "fx_payouts",
+  kyc: "fx_kyc",
+};
 
 function lsGet<T>(key: string, fallback: T): T {
   try {
@@ -129,7 +150,7 @@ export async function createOrder(input: NewOrder): Promise<OrderRecord> {
     return order;
   }
 
-  const ref = await addDoc(collection(getDb(), "orders"), data);
+  const ref = await addDoc(collection(getDb(), "orders"), plain(data));
   return { id: ref.id, ...data };
 }
 
@@ -164,4 +185,138 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
     return;
   }
   await updateDoc(doc(getDb(), "orders", id), { status });
+}
+
+export async function updateOrderCredentials(id: string, credentials: OrderCredentials): Promise<void> {
+  if (!isFirebaseConfigured) {
+    const orders = lsGet<OrderRecord[]>(KEYS.orders, []).map((o) =>
+      o.id === id ? { ...o, credentials } : o
+    );
+    lsSet(KEYS.orders, orders);
+    return;
+  }
+  await updateDoc(doc(getDb(), "orders", id), { credentials });
+}
+
+// ───────────────────────── Coupons ─────────────────────────
+
+const couponId = (code: string) => code.trim().toUpperCase();
+
+export async function listCoupons(): Promise<Coupon[]> {
+  if (!isFirebaseConfigured) return lsGet<Coupon[]>(KEYS.coupons, []).sort(byNewest);
+  const snap = await getDocs(collection(getDb(), "coupons"));
+  return snap.docs.map((d) => d.data() as Coupon).sort(byNewest);
+}
+
+export async function saveCoupon(c: Coupon): Promise<void> {
+  const coupon = { ...c, code: couponId(c.code) };
+  if (!isFirebaseConfigured) {
+    const rest = lsGet<Coupon[]>(KEYS.coupons, []).filter((x) => x.code !== coupon.code);
+    lsSet(KEYS.coupons, [coupon, ...rest]);
+    return;
+  }
+  await setDoc(doc(getDb(), "coupons", coupon.code), plain(coupon));
+}
+
+export async function deleteCoupon(code: string): Promise<void> {
+  const id = couponId(code);
+  if (!isFirebaseConfigured) {
+    lsSet(KEYS.coupons, lsGet<Coupon[]>(KEYS.coupons, []).filter((x) => x.code !== id));
+    return;
+  }
+  await deleteDoc(doc(getDb(), "coupons", id));
+}
+
+/** Customer: look up one code. Returns null when it does not exist or is switched off. */
+export async function getCoupon(code: string): Promise<Coupon | null> {
+  const id = couponId(code);
+  if (!id) return null;
+  let found: Coupon | null = null;
+  if (!isFirebaseConfigured) {
+    found = lsGet<Coupon[]>(KEYS.coupons, []).find((c) => c.code === id) ?? null;
+  } else {
+    const snap = await getDoc(doc(getDb(), "coupons", id));
+    found = snap.exists() ? (snap.data() as Coupon) : null;
+  }
+  return found && found.enabled && found.percent > 0 ? found : null;
+}
+
+// ───────────────────────── Payouts ─────────────────────────
+
+export async function createPayout(input: NewPayout): Promise<void> {
+  const data = { ...input, status: "pending" as PayoutStatus, createdAt: new Date().toISOString() };
+  if (!isFirebaseConfigured) {
+    const rec: PayoutRecord = { id: `pay_${Date.now()}`, ...data };
+    lsSet(KEYS.payouts, [rec, ...lsGet<PayoutRecord[]>(KEYS.payouts, [])]);
+    return;
+  }
+  await addDoc(collection(getDb(), "payouts"), plain(data));
+}
+
+export async function listPayouts(): Promise<PayoutRecord[]> {
+  if (!isFirebaseConfigured) return lsGet<PayoutRecord[]>(KEYS.payouts, []).sort(byNewest);
+  const snap = await getDocs(collection(getDb(), "payouts"));
+  return snap.docs
+    .map((d) => ({ ...(d.data() as Omit<PayoutRecord, "id">), id: d.id }))
+    .sort(byNewest);
+}
+
+export async function listMyPayouts(uid: string): Promise<PayoutRecord[]> {
+  if (!isFirebaseConfigured) {
+    return lsGet<PayoutRecord[]>(KEYS.payouts, []).filter((p) => p.userId === uid).sort(byNewest);
+  }
+  const snap = await getDocs(query(collection(getDb(), "payouts"), where("userId", "==", uid)));
+  return snap.docs
+    .map((d) => ({ ...(d.data() as Omit<PayoutRecord, "id">), id: d.id }))
+    .sort(byNewest);
+}
+
+export async function updatePayoutStatus(id: string, status: PayoutStatus): Promise<void> {
+  if (!isFirebaseConfigured) {
+    lsSet(
+      KEYS.payouts,
+      lsGet<PayoutRecord[]>(KEYS.payouts, []).map((p) => (p.id === id ? { ...p, status } : p))
+    );
+    return;
+  }
+  await updateDoc(doc(getDb(), "payouts", id), { status });
+}
+
+// ───────────────────────── KYC ─────────────────────────
+
+export async function getMyKyc(uid: string): Promise<KycRecord | null> {
+  if (!isFirebaseConfigured) {
+    return lsGet<KycRecord[]>(KEYS.kyc, []).find((k) => k.userId === uid) ?? null;
+  }
+  const snap = await getDoc(doc(getDb(), "kyc", uid));
+  return snap.exists() ? (snap.data() as KycRecord) : null;
+}
+
+export async function submitKyc(
+  input: Omit<KycRecord, "status" | "createdAt" | "note">
+): Promise<void> {
+  const rec: KycRecord = { ...input, status: "pending", createdAt: new Date().toISOString() };
+  if (!isFirebaseConfigured) {
+    const rest = lsGet<KycRecord[]>(KEYS.kyc, []).filter((k) => k.userId !== rec.userId);
+    lsSet(KEYS.kyc, [rec, ...rest]);
+    return;
+  }
+  await setDoc(doc(getDb(), "kyc", rec.userId), plain(rec));
+}
+
+export async function listKyc(): Promise<KycRecord[]> {
+  if (!isFirebaseConfigured) return lsGet<KycRecord[]>(KEYS.kyc, []).sort(byNewest);
+  const snap = await getDocs(collection(getDb(), "kyc"));
+  return snap.docs.map((d) => d.data() as KycRecord).sort(byNewest);
+}
+
+export async function updateKycStatus(userId: string, status: KycStatus, note = ""): Promise<void> {
+  if (!isFirebaseConfigured) {
+    lsSet(
+      KEYS.kyc,
+      lsGet<KycRecord[]>(KEYS.kyc, []).map((k) => (k.userId === userId ? { ...k, status, note } : k))
+    );
+    return;
+  }
+  await updateDoc(doc(getDb(), "kyc", userId), { status, note });
 }

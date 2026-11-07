@@ -30,6 +30,53 @@ export interface OrderRecord {
   price: number;
   status: OrderStatus;
   createdAt: string;
+  coupon?: string;
+  /** MT5 login handed over by the admin when the account is delivered. */
+  credentials?: OrderCredentials;
 }
 
-export type NewOrder = Omit<OrderRecord, "id" | "status" | "createdAt">;
+export interface OrderCredentials {
+  login: string;
+  password: string;
+  server: string;
+}
+
+export type NewOrder = Omit<OrderRecord, "id" | "status" | "createdAt" | "credentials">;
+
+export interface Coupon {
+  code: string;
+  percent: number;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export type PayoutStatus = "pending" | "approved" | "paid" | "rejected";
+
+export interface PayoutRecord {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  amount: number;
+  method: "USDT";
+  address: string;
+  status: PayoutStatus;
+  createdAt: string;
+}
+
+export type NewPayout = Omit<PayoutRecord, "id" | "status" | "createdAt">;
+
+export type KycStatus = "pending" | "approved" | "rejected";
+
+/** One KYC submission per user (document id = user id). */
+export interface KycRecord {
+  userId: string;
+  email: string;
+  name: string;
+  fullName: string;
+  country: string;
+  documentUrl: string;
+  status: KycStatus;
+  createdAt: string;
+  note?: string;
+}

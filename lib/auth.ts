@@ -2,6 +2,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
@@ -171,6 +172,24 @@ export async function signUpWithEmail(
     await persistProfile(user);
     return { ok: true, message: `Account created. Welcome, ${user.name}!`, user };
   } catch (err) {
+    return { ok: false, message: friendlyError(err) };
+  }
+}
+
+/** Sends Firebase's password-reset email. (Google-only accounts have no password to reset.) */
+export async function resetPassword(email: string): Promise<AuthResult> {
+  if (!isFirebaseConfigured) {
+    return { ok: true, message: "Demo mode: no email is sent. Just sign in with any password." };
+  }
+  try {
+    await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+    return { ok: true, message: "Password reset link sent. Check your inbox (and spam folder)." };
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code ?? "";
+    // Don't reveal whether an email is registered.
+    if (code === "auth/user-not-found") {
+      return { ok: true, message: "If this email is registered, a reset link has been sent." };
+    }
     return { ok: false, message: friendlyError(err) };
   }
 }

@@ -72,11 +72,26 @@ export default function AccountCard({ order }: { order: OrderRecord }) {
       {tab === "Credentials" && (
         <div className="dash-border mt-3 rounded-lg border p-3 text-sm">
           <p className="dash-text font-medium">MT5 login details</p>
-          <p className="dash-sub mt-1 text-xs">
-            {order.status === "active"
-              ? "Your login, password and server are sent to your email by support."
-              : "Available once your order is confirmed and the account is activated."}
-          </p>
+          {order.credentials ? (
+            <dl className="mt-2 space-y-1 text-xs">
+              {(
+                [
+                  ["Login", order.credentials.login],
+                  ["Password", order.credentials.password],
+                  ["Server", order.credentials.server],
+                ] as const
+              ).map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between gap-3">
+                  <dt className="dash-sub">{k}</dt>
+                  <dd className="dash-text select-all font-mono font-semibold">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="dash-sub mt-1 text-xs">
+              Available once your order is confirmed and the account is activated.
+            </p>
+          )}
         </div>
       )}
       {tab === "Account Stats" && (

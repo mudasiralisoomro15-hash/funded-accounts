@@ -11,6 +11,9 @@ import {
   Loader2,
   LogOut,
   Receipt,
+  Ticket,
+  Wallet,
+  BadgeCheck,
   RotateCcw,
   Save,
   ShieldAlert,
@@ -25,14 +28,39 @@ import PlansEditor from "@/components/admin/PlansEditor";
 import ContentEditor from "@/components/admin/ContentEditor";
 import UsersTable from "@/components/admin/UsersTable";
 import OrdersTable from "@/components/admin/OrdersTable";
+import CouponsManager from "@/components/admin/CouponsManager";
+import PayoutsTable from "@/components/admin/PayoutsTable";
+import KycTable from "@/components/admin/KycTable";
 import StatusBadge from "@/components/StatusBadge";
 import { Panel, formatDate } from "@/components/admin/ui";
-import { listOrders, listUsers, updateOrderStatus } from "@/lib/db";
+import {
+  deleteCoupon,
+  listCoupons,
+  listKyc,
+  listOrders,
+  listPayouts,
+  listUsers,
+  saveCoupon,
+  updateKycStatus,
+  updateOrderCredentials,
+  updateOrderStatus,
+  updatePayoutStatus,
+} from "@/lib/db";
 import { DEFAULT_SITE_CONFIG, cloneConfig, type SiteConfig } from "@/lib/siteConfig";
 import { formatSize, formatUSD } from "@/lib/plans";
-import type { OrderRecord, OrderStatus, UserRecord } from "@/lib/types";
+import type {
+  Coupon,
+  KycRecord,
+  KycStatus,
+  OrderCredentials,
+  OrderRecord,
+  OrderStatus,
+  PayoutRecord,
+  PayoutStatus,
+  UserRecord,
+} from "@/lib/types";
 
-type Tab = "overview" | "plans" | "content" | "users" | "orders";
+type Tab = "overview" | "plans" | "content" | "users" | "orders" | "coupons" | "payouts" | "kyc";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -40,6 +68,9 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "content", label: "Site Content", icon: FileText },
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Orders", icon: Receipt },
+  { id: "coupons", label: "Coupons", icon: Ticket },
+  { id: "payouts", label: "Payouts", icon: Wallet },
+  { id: "kyc", label: "KYC", icon: BadgeCheck },
 ];
 
 function FullScreen({ children }: { children: React.ReactNode }) {
@@ -199,17 +230,23 @@ function Workspace() {
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
+  const [kyc, setKyc] = useState<KycRecord[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(config), [draft, config]);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listUsers(), listOrders()])
-      .then(([u, o]) => {
+    Promise.all([listUsers(), listOrders(), listCoupons(), listPayouts(), listKyc()])
+      .then(([u, o, c, p, k]) => {
         if (!alive) return;
         setUsers(u);
         setOrders(o);
+        setCoupons(c);
+        setPayouts(p);
+        setKyc(k);
       })
       .catch((e) => {
         if (alive) setDataError(e instanceof Error ? e.message : "Could not load users/orders.");
@@ -276,6 +313,43 @@ function Workspace() {
     }
   }
 
+  async function handleCredentials(id: string, credentials: OrderCredentials) {
+    await updateOrderCredentials(id, credentials);
+    setOrders((list) => list.map((o) => (o.id === id ? { ...o, credentials } : o)));
+  }
+
+  async function handleCouponSave(c: Coupon) {
+    await saveCoupon(c);
+    setCoupons(await listCoupons());
+  }
+
+  async function handleCouponDelete(code: string) {
+    await deleteCoupon(code);
+    setCoupons((list) => list.filter((c) => c.code !== code));
+  }
+
+  async function handlePayout(id: string, status: PayoutStatus) {
+    const previous = payouts;
+    setPayouts((list) => list.map((p) => (p.id === id ? { ...p, status } : p)));
+    try {
+      await updatePayoutStatus(id, status);
+    } catch (e) {
+      setPayouts(previous);
+      setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not update payout." });
+    }
+  }
+
+  async function handleKyc(userId: string, status: KycStatus) {
+    const previous = kyc;
+    setKyc((list) => list.map((k) => (k.userId === userId ? { ...k, status } : k)));
+    try {
+      await updateKycStatus(userId, status);
+    } catch (e) {
+      setKyc(previous);
+      setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not update KYC." });
+    }
+  }
+
   const pending = orders.filter((o) => o.status === "pending").length;
   const revenue = orders
     .filter((o) => o.status === "paid" || o.status === "active")
@@ -317,6 +391,10 @@ function Workspace() {
                 { label: "Total orders", value: String(orders.length) },
                 { label: "Pending orders", value: String(pending) },
                 { label: "Confirmed revenue", value: formatUSD(revenue) },
+                { label: "Active accounts", value: String(orders.filter((o) => o.status === "active").length) },
+                { label: "Pending payouts", value: String(payouts.filter((p) => p.status === "pending").length) },
+                { label: "KYC to review", value: String(kyc.filter((k) => k.status === "pending").length) },
+                { label: "Coupons on", value: String(coupons.filter((c) => c.enabled).length) },
               ].map((s) => (
                 <div key={s.label} className="rounded-2xl border border-blue-500/20 bg-card/70 p-5">
                   <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{s.label}</p>
@@ -362,6 +440,10 @@ function Workspace() {
                   <strong className="text-slate-200">Orders:</strong> after a customer pays, set the order to
                   “paid”, then “active” once you deliver the account.
                 </li>
+                <li>
+                  <strong className="text-slate-200">Orders → Login:</strong> enter the MT5 login, password
+                  and server; the trader sees it in their dashboard.
+                </li>
                 <li>Changes go live only after you press “Save changes”.</li>
               </ul>
             </Panel>
@@ -384,7 +466,14 @@ function Workspace() {
         )}
         {tab === "content" && <ContentEditor config={draft} onChange={setDraft} />}
         {tab === "users" && <UsersTable users={users} />}
-        {tab === "orders" && <OrdersTable orders={orders} onStatusChange={handleStatus} />}
+        {tab === "orders" && (
+          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} />
+        )}
+        {tab === "coupons" && (
+          <CouponsManager coupons={coupons} onSave={handleCouponSave} onDelete={handleCouponDelete} />
+        )}
+        {tab === "payouts" && <PayoutsTable payouts={payouts} onStatusChange={handlePayout} />}
+        {tab === "kyc" && <KycTable items={kyc} onDecision={handleKyc} />}
       </div>
 
       {/* Sticky save bar */}

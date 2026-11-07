@@ -22,10 +22,11 @@ import { useSiteConfig } from "./SiteConfigProvider";
 import {
   signInWithEmail,
   signInWithGoogle,
+  resetPassword,
   signUpWithEmail,
   type AuthResult,
 } from "@/lib/auth";
-import { createOrder } from "@/lib/db";
+import { createOrder, getCoupon } from "@/lib/db";
 import { createCheckoutSession } from "@/lib/payments";
 import { formatSize, formatUSD, getModel, type PlanSelection } from "@/lib/plans";
 import type { AppUser } from "@/lib/types";
@@ -70,6 +71,10 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState<"email" | "google" | "order" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; percent: number } | null>(null);
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ title: string; text: string } | null>(null);
 
   // Lock page scroll + close on Escape while the modal is open.
@@ -90,7 +95,11 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
   // Fresh status whenever the modal opens or the tab changes.
   useEffect(() => {
     setError(null);
+    setInfo(null);
     setSuccess(null);
+    setCoupon(null);
+    setCouponInput("");
+    setCouponMsg(null);
     setPassword("");
     setShowPw(false);
   }, [mode, open]);
@@ -98,7 +107,43 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
   if (!open) return null;
 
   const isSignup = mode === "signup";
+
+  async function handleForgot() {
+    setError(null);
+    setInfo(null);
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError("Enter your email above first, then press Forgot password.");
+      return;
+    }
+    setLoading("email");
+    const res = await resetPassword(email);
+    setLoading(null);
+    if (res.ok) setInfo(res.message);
+    else setError(res.message);
+  }
   const model = order ? getModel(order.modelId, config.models) : null;
+  const finalPrice = order
+    ? coupon
+      ? Math.max(1, Math.round(order.price * (1 - coupon.percent / 100)))
+      : order.price
+    : 0;
+
+  async function handleApplyCoupon() {
+    setCouponMsg(null);
+    if (!couponInput.trim()) return;
+    try {
+      const c = await getCoupon(couponInput);
+      if (c) {
+        setCoupon({ code: c.code, percent: c.percent });
+        setCouponMsg(`${c.percent}% off applied`);
+      } else {
+        setCoupon(null);
+        setCouponMsg("Invalid or expired coupon code.");
+      }
+    } catch {
+      setCouponMsg("Could not check the coupon. Try again.");
+    }
+  }
   // Already logged in and buying -> skip the form and just confirm the order.
   const confirmOnly = !!user && !!order && !success && loading === null;
 
@@ -119,15 +164,16 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
       modelId: order.modelId,
       modelName: model.name,
       size: order.size,
-      price: order.price,
+      price: finalPrice,
+      ...(coupon ? { coupon: coupon.code } : {}),
     });
-    const checkout = await createCheckoutSession(order, u.email);
+    const checkout = await createCheckoutSession({ ...order, price: finalPrice }, u.email);
     return checkout.message;
   }
 
   function orderSummary(): string {
     return order && model
-      ? `${model.name} ${formatSize(order.size)} (${formatUSD(order.price)})`
+      ? `${model.name} ${formatSize(order.size)} (${formatUSD(finalPrice)})`
       : "";
   }
 
@@ -203,14 +249,38 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
 
   const selectionBox =
     order && model ? (
-      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
-        <div>
-          <p className="text-xs text-blue-300/80">Your selection</p>
-          <p className="text-sm font-semibold text-white">
-            {model.name} · {formatSize(order.size)}
-          </p>
+      <div className="mt-5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-blue-300/80">Your selection</p>
+            <p className="text-sm font-semibold text-white">
+              {model.name} · {formatSize(order.size)}
+            </p>
+          </div>
+          <div className="text-right">
+            {coupon && <p className="text-xs text-slate-400 line-through">{formatUSD(order.price)}</p>}
+            <p className="font-display text-xl font-bold text-blue-400">{formatUSD(finalPrice)}</p>
+          </div>
         </div>
-        <p className="font-display text-xl font-bold text-blue-400">{formatUSD(order.price)}</p>
+        <div className="mt-3 flex gap-2">
+          <input
+            value={couponInput}
+            onChange={(e) => setCouponInput(e.target.value)}
+            placeholder="Coupon code"
+            aria-label="Coupon code"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm uppercase text-white outline-none placeholder:normal-case placeholder:text-slate-500 focus:border-blue-500/60"
+          />
+          <button
+            type="button"
+            onClick={handleApplyCoupon}
+            className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+          >
+            Apply
+          </button>
+        </div>
+        {couponMsg && (
+          <p className={`mt-1.5 text-xs ${coupon ? "text-orange-300" : "text-red-300"}`}>{couponMsg}</p>
+        )}
       </div>
     ) : null;
 
@@ -400,6 +470,26 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
                     </button>
                   }
                 />
+
+                {!isSignup && (
+                  <div className="-mt-1 text-right">
+                    <button
+                      type="button"
+                      onClick={handleForgot}
+                      disabled={loading !== null}
+                      className="text-xs font-semibold text-blue-400 transition hover:text-blue-300 disabled:opacity-60"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                {info && (
+                  <div className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-3 text-sm text-emerald-300">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{info}</span>
+                  </div>
+                )}
 
                 {errorBox}
 
