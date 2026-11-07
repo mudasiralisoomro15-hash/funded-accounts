@@ -491,7 +491,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
   return (
     <div className="mx-auto max-w-7xl px-4 pb-32 pt-6 sm:px-6 lg:px-8">
       {/* Tabs */}
-      <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" aria-label="Admin sections">
+      <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible" aria-label="Admin sections">
         {TABS.filter((t) => t.id !== "admins" || isOwner).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
