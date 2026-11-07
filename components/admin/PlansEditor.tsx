@@ -35,8 +35,8 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
             onClick={() => setSelectedId(x.id)}
             className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
               x.id === m.id
-                ? "border-emerald-400 bg-emerald-500/20 text-emerald-300"
-                : "border-white/10 bg-white/5 text-slate-300 hover:border-emerald-500/40"
+                ? "border-blue-400 bg-blue-500/20 text-blue-300"
+                : "border-white/10 bg-white/5 text-slate-300 hover:border-blue-500/40"
             }`}
           >
             {x.name}
@@ -52,7 +52,7 @@ export default function PlansEditor({ models, onChange }: PlansEditorProps) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {ACCOUNT_SIZES.map((size) => (
             <div key={size} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-xs font-semibold text-emerald-300">{formatSize(size)}</p>
+              <p className="text-xs font-semibold text-blue-300">{formatSize(size)}</p>
               <div className="relative mt-2">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                   $

@@ -4,8 +4,10 @@ import { useCallback, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import PricingSection from "@/components/PricingSection";
+import HowItWorks from "@/components/HowItWorks";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import FaqSection from "@/components/FaqSection";
+import CtaSection from "@/components/CtaSection";
 import Footer from "@/components/Footer";
 import AuthModal, { type AuthMode } from "@/components/AuthModal";
 import type { PlanSelection } from "@/lib/plans";
@@ -25,13 +27,15 @@ export default function HomePage() {
 
   return (
     <main>
-      {/* "Client Portal" -> sign in. No signup wall: the page below is fully visible. */}
+      {/* "Client Portal" -> sign in. No signup wall: everything below is visible to everyone. */}
       <Navbar onOpenAuth={(mode) => openAuth(mode)} />
       <Hero />
       {/* "Buy Account" -> auth modal (sign up tab) with the chosen plan attached. */}
       <PricingSection onBuy={(selection) => openAuth("signup", selection)} />
+      <HowItWorks />
       <WhyChooseUs />
       <FaqSection />
+      <CtaSection />
       <Footer />
 
       <AuthModal

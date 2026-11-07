@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
-import type { FaqItem, SiteConfig } from "@/lib/siteConfig";
+import { FAQ_CATEGORIES, type FaqItem, type SiteConfig } from "@/lib/siteConfig";
 import { Field, Panel, Toggle, inputCls } from "./ui";
 
 interface ContentEditorProps {
@@ -101,7 +101,7 @@ export default function ContentEditor({ config, onChange }: ContentEditorProps) 
           <button
             type="button"
             onClick={() => setFaqs([...config.faqs, { q: "New question?", a: "Answer here." }])}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20"
           >
             <Plus className="h-4 w-4" /> Add question
           </button>
@@ -114,6 +114,19 @@ export default function ContentEditor({ config, onChange }: ContentEditorProps) 
                 <div className="flex-1 space-y-3">
                   <Field label={`Question ${i + 1}`}>
                     <input className={inputCls} value={f.q} onChange={(e) => editFaq(i, { q: e.target.value })} />
+                  </Field>
+                  <Field label="Category">
+                    <select
+                      className={inputCls}
+                      value={f.cat ?? "General"}
+                      onChange={(e) => editFaq(i, { cat: e.target.value })}
+                    >
+                      {FAQ_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                   <Field label="Answer">
                     <textarea

@@ -1,33 +1,58 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Mail } from "lucide-react";
 import { useSiteConfig } from "./SiteConfigProvider";
 
 export default function FaqSection() {
   const { config } = useSiteConfig();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [cat, setCat] = useState("All");
+
+  const categories = ["All", ...Array.from(new Set(config.faqs.map((f) => f.cat ?? "General")))];
+  const visible = config.faqs.filter((f) => cat === "All" || (f.cat ?? "General") === cat);
 
   return (
-    <section id="faq" className="relative scroll-mt-16 py-20 sm:py-28">
+    <section id="faq" className="relative scroll-mt-16 bg-white py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="text-center">
-          <h2 className="font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
-            Rules &amp; <span className="text-gradient">FAQ</span>
+          <h2 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl lg:text-5xl">
+            Frequently Asked <span className="text-gradient">Questions</span>
           </h2>
-          <p className="mt-3 text-slate-400">Everything you need to know before you start.</p>
+          <p className="mt-3 text-slate-600">Everything you need to know before you start.</p>
         </div>
 
-        <div className="mt-10 space-y-3">
-          {config.faqs.map((item, i) => {
+        {/* Category tabs */}
+        <div className="no-scrollbar mt-8 flex gap-2 overflow-x-auto pb-1 sm:justify-center">
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => {
+                setCat(c);
+                setOpenIndex(0);
+              }}
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                cat === c
+                  ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/25"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-8 space-y-3">
+          {visible.map((item, i) => {
             const isOpen = openIndex === i;
             return (
               <div
                 key={item.q}
-                className={`overflow-hidden rounded-2xl border backdrop-blur-md transition-colors duration-300 ${
+                className={`overflow-hidden rounded-2xl border bg-white transition-all duration-300 ${
                   isOpen
-                    ? "border-emerald-500/40 bg-card/90 shadow-glow"
-                    : "border-white/10 bg-white/5 hover:border-emerald-500/20"
+                    ? "border-blue-300 shadow-lg shadow-blue-900/10"
+                    : "border-slate-200 hover:border-blue-200"
                 }`}
               >
                 <h3>
@@ -39,9 +64,9 @@ export default function FaqSection() {
                     id={`faq-trigger-${i}`}
                     className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left sm:px-6 sm:py-5"
                   >
-                    <span className="text-sm font-semibold text-white sm:text-base">{item.q}</span>
+                    <span className="text-sm font-semibold text-slate-900 sm:text-base">{item.q}</span>
                     <ChevronDown
-                      className={`h-5 w-5 shrink-0 text-emerald-400 transition-transform duration-300 ${
+                      className={`h-5 w-5 shrink-0 text-blue-600 transition-transform duration-300 ${
                         isOpen ? "rotate-180" : ""
                       }`}
                     />
@@ -56,14 +81,25 @@ export default function FaqSection() {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <p className="px-5 pb-5 text-sm leading-relaxed text-slate-400 sm:px-6">
-                      {item.a}
-                    </p>
+                    <p className="px-5 pb-5 text-sm leading-relaxed text-slate-600 sm:px-6">{item.a}</p>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-between gap-3 rounded-2xl bg-blue-50 px-6 py-5 text-center sm:flex-row sm:text-left">
+          <div>
+            <p className="font-semibold text-slate-900">Still have questions?</p>
+            <p className="text-sm text-slate-600">Our team is here to help, 24/7.</p>
+          </div>
+          <a
+            href={`mailto:${config.supportEmail}`}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
+          >
+            <Mail className="h-4 w-4" /> {config.supportEmail}
+          </a>
         </div>
       </div>
     </section>

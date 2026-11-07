@@ -33,7 +33,7 @@ export default function PayoutPage() {
           <ul className="dash-sub mt-3 list-inside list-disc space-y-1.5 text-sm">
             <li>Processed within 48 hours</li>
             <li>Methods: USDT (crypto) and bank transfer</li>
-            <li>Bi-weekly or on-demand, depending on your model</li>
+            <li>Daily payouts, minimum $20, paid in crypto after KYC</li>
           </ul>
         </div>
       </div>

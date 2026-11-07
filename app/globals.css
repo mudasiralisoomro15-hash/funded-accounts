@@ -7,25 +7,25 @@ html {
 }
 
 body {
-  @apply bg-obsidian-deep text-slate-300 antialiased;
+  @apply bg-white text-slate-600 antialiased;
 }
 
 ::selection {
-  background: rgba(16, 185, 129, 0.35);
-  color: #fff;
+  background: rgba(37, 99, 235, 0.25);
+  color: #0f172a;
 }
 
 @layer components {
   .glass {
-    @apply border border-white/10 bg-white/5 backdrop-blur-md;
+    @apply border border-slate-200 bg-white/80 backdrop-blur-md;
   }
 
   .btn-glow {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-400 px-6 py-3.5 font-semibold text-[#04110B] shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 px-6 py-3.5 font-semibold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-emerald-300 via-emerald-400 to-lime-300 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 bg-clip-text text-transparent;
   }
 }
 

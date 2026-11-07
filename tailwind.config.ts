@@ -20,8 +20,8 @@ const config: Config = {
         display: ["var(--font-display)", "var(--font-inter)", "sans-serif"],
       },
       boxShadow: {
-        glow: "0 0 30px -6px rgba(16,185,129,0.55)",
-        "glow-lg": "0 0 55px -8px rgba(34,197,94,0.65)",
+        glow: "0 10px 30px -8px rgba(37,99,235,0.55)",
+        "glow-lg": "0 20px 55px -10px rgba(37,99,235,0.6)",
       },
       keyframes: {
         "fade-in": {

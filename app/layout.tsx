@@ -9,7 +9,7 @@ const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display" }
 export const metadata: Metadata = {
   title: "FundedX — Trade Firm Capital. Keep Up To 100% Of The Profits.",
   description:
-    "Get funded with Instant Flex, Instant Lite, 1-Step and 2-Step accounts. Up to 100% profit split, EAs allowed, no consistency rule and fast crypto & bank payouts.",
+    "Get funded with 1 Step, 2 Step and 3 Step challenges up to $100K. Up to 100% profit split and daily crypto payouts.",
 };
 
 export const viewport: Viewport = {

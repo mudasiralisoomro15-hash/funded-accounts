@@ -6,7 +6,10 @@ import { DEFAULT_MODELS, type ModelConfig } from "./plans";
 export interface FaqItem {
   q: string;
   a: string;
+  cat?: string;
 }
+
+export const FAQ_CATEGORIES = ["Challenge", "Payouts", "Trading Rules", "General"];
 
 export interface SiteConfig {
   brandName: string;
@@ -25,31 +28,47 @@ export interface SiteConfig {
 export const DEFAULT_FAQS: FaqItem[] = [
   {
     q: "What is the difference between Static and Trailing Drawdown?",
-    a: "With Static Drawdown your loss floor is fixed below your starting balance and never moves. On a $10,000 account with a 6% static drawdown, the floor is always $9,400. With Trailing Drawdown the floor follows your equity upward as you reach new highs, which locks in progress but leaves less room to give profits back. Instant Flex uses Static, Instant Lite uses Trailing.",
+    cat: "Trading Rules",
+    a: "With Static Drawdown your loss floor is fixed below your starting balance and never moves. On a $10,000 account with an 8% static drawdown, the floor is always $9,200. With Trailing Drawdown the floor follows your equity upward as you reach new highs, which locks in progress but leaves less room to give profits back. All our models use Static drawdown.",
   },
   {
     q: "Are Expert Advisors (EAs) allowed?",
-    a: "Yes. EAs and trading bots are allowed on every account model. We only ask that they are not used for abusive practices such as latency arbitrage or exploiting platform errors.",
+    cat: "Trading Rules",
+    a: "No. EAs, bots and any automated trading systems are not allowed. All trades must be placed manually.",
   },
   {
     q: "How fast are payouts processed?",
-    a: "Most payout requests are processed within 48 hours. You can withdraw via Crypto (USDT) or bank transfer, on-demand or bi-weekly depending on your model.",
+    cat: "Payouts",
+    a: "Payouts are available daily, and you can request multiple times a day. The minimum payout is $20, paid in crypto, and KYC must be completed first. You keep 80% of eligible profit from the first dollar.",
   },
   {
-    q: "Is there a consistency rule?",
-    a: "No. There is no consistency rule on any account model. Trade your own strategy and keep your edge.",
+    q: "What is the minimum number of trading days?",
+    cat: "Challenge",
+    a: "Most models need 5 profitable days, each with at least 0.5% profit. The 3 Step model needs 2, 2 and 3 profitable days across its three phases. There is no maximum trading period.",
   },
   {
     q: "Can I trade during high-impact news?",
-    a: "Yes, news trading is allowed on all models. Keep in mind that spreads can widen and slippage can occur around major releases.",
+    cat: "Trading Rules",
+    a: "Yes, during challenge phases. On funded accounts, opening or closing trades within 5 minutes of a high-impact (red-folder) news event is a breach.",
   },
   {
-    q: "What is the difference between Instant and Challenge models?",
-    a: "Instant models (Flex and Lite) fund you from day one with no profit target and no minimum trading days. Challenge models (1-Step and 2-Step) require you to reach a profit target first, and come with higher drawdown limits and leverage.",
+    q: "What leverage do I get?",
+    cat: "Trading Rules",
+    a: "Forex 1:100, Gold 1:50 and Crypto 1:50. Swing accounts may hold trades over the weekend; Scalping accounts must close all trades and pending orders before the weekend close.",
+  },
+  {
+    q: "Which challenge models are available?",
+    cat: "Challenge",
+    a: "1 Step and 1 Step Pro, 2 Step, 2 Step Prime and 2 Step Pro, and 3 Step. Fewer steps mean a bigger single target; more steps mean smaller targets and a larger funded drawdown. There is no daily loss limit on funded accounts.",
   },
   {
     q: "What happens if I hit the daily loss limit or max drawdown?",
+    cat: "Trading Rules",
     a: "The account is closed once a limit is breached. You can start again with a new account at any time.",
+  },  {
+    q: "How do I contact support?",
+    cat: "General",
+    a: "Open the Support page in your trader dashboard or email us. We usually reply within 24 hours.",
   },
 ];
 
@@ -61,11 +80,11 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     text: "🔥 Launch offer: extra discount on all challenges this week!",
   },
   hero: {
-    badge: "⚡ Up to 100% Profit Split & On-Demand Payouts",
+    badge: "⚡ Up to 100% Profit Split & Daily Payouts",
     headlineTop: "Trade Firm Capital.",
     headlineAccent: "Keep Up To 100% Of The Profits.",
     subheadline:
-      "No complex rules. High leverage, static & trailing drawdown options, fast withdrawals via Crypto & Bank.",
+      "1, 2 and 3 Step challenges, accounts up to $100K, daily payouts and no maximum trading period.",
   },
   models: DEFAULT_MODELS,
   faqs: DEFAULT_FAQS,

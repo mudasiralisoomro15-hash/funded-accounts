@@ -1,12 +1,18 @@
 // ─────────────────────────────────────────────────────────────
-// Plan data. All numbers below are PLACEHOLDERS — replace them with
-// your real rules and prices. The whole UI reads from this file only.
+// Plan data. Rules follow EZE Funded's published FAQ; prices are
+// estimates — set your real prices in /admin → Plans. The whole UI reads from this file only.
 // ─────────────────────────────────────────────────────────────
 
-export const ACCOUNT_SIZES = [2500, 5000, 10000, 25000, 50000, 100000] as const;
+export const ACCOUNT_SIZES = [2500, 5000, 10000, 20000, 50000, 100000] as const;
 export type AccountSize = (typeof ACCOUNT_SIZES)[number];
 
-export type ModelId = "instant-flex" | "instant-lite" | "one-step" | "two-step";
+export type ModelId =
+  | "one-step"
+  | "one-step-pro"
+  | "two-step"
+  | "two-step-prime"
+  | "two-step-pro"
+  | "three-step";
 export type DrawdownType = "Static" | "Trailing";
 
 export interface ModelConfig {
@@ -35,75 +41,84 @@ export interface PlanSelection {
   price: number;
 }
 
+const COMMON = {
+  leverage: "Forex 1:100 · Gold/Crypto 1:50",
+  minTradingDays: "5 profitable days (0.5%+ each)",
+  profitSplit: "80% (up to 100%)",
+  payouts: "Daily (min $20, crypto)",
+  drawdownType: "Static" as DrawdownType,
+  discountPct: 0,
+  enabled: true,
+};
+
 export const DEFAULT_MODELS: ModelConfig[] = [
   {
-    id: "instant-flex",
-    name: "Instant Flex",
-    tabLabel: "Instant Flex (Static)",
-    tagline: "Funded from day one. Fixed drawdown floor, zero profit target.",
-    drawdownType: "Static",
-    dailyLossPct: 3,
-    maxDrawdownPct: 6,
-    leverage: "1:50",
-    profitTarget: "None",
-    minTradingDays: "0 Days / Instant",
-    profitSplit: "Up to 90%",
-    payouts: "On-Demand",
-    discountPct: 20,
-    popular: true,
-    enabled: true,
-    prices: { 2500: 39, 5000: 69, 10000: 129, 25000: 299, 50000: 549, 100000: 999 },
-  },
-  {
-    id: "instant-lite",
-    name: "Instant Lite",
-    tabLabel: "Instant Lite (Trailing)",
-    tagline: "Lowest entry price. Instant funding with a trailing drawdown.",
-    drawdownType: "Trailing",
-    dailyLossPct: 3,
-    maxDrawdownPct: 4,
-    leverage: "1:50",
-    profitTarget: "None",
-    minTradingDays: "0 Days / Instant",
-    profitSplit: "Up to 80%",
-    payouts: "Bi-Weekly",
-    discountPct: 20,
-    enabled: true,
-    prices: { 2500: 29, 5000: 49, 10000: 89, 25000: 209, 50000: 389, 100000: 699 },
-  },
-  {
+    ...COMMON,
     id: "one-step",
-    name: "1-Step Challenge",
-    tabLabel: "1-Step Challenge",
-    tagline: "Hit a single profit target and get funded.",
-    drawdownType: "Static",
+    name: "1 Step",
+    tabLabel: "1 Step",
+    tagline: "One phase, one 12% target. Funded max drawdown 45%, no daily loss on funded.",
     dailyLossPct: 4,
     maxDrawdownPct: 8,
-    leverage: "1:100",
-    profitTarget: "10%",
-    minTradingDays: "3 Days",
-    profitSplit: "Up to 100%",
-    payouts: "Bi-Weekly / On-Demand",
-    discountPct: 25,
-    enabled: true,
-    prices: { 2500: 22, 5000: 39, 10000: 69, 25000: 169, 50000: 299, 100000: 549 },
+    profitTarget: "12%",
+    popular: true,
+    prices: { 2500: 40, 5000: 60, 10000: 100, 20000: 180, 50000: 380, 100000: 650 },
   },
   {
+    ...COMMON,
+    id: "one-step-pro",
+    name: "1 Step Pro",
+    tabLabel: "1 Step Pro",
+    tagline: "Tighter challenge limits, much bigger funded drawdown (60%).",
+    dailyLossPct: 3,
+    maxDrawdownPct: 6,
+    profitTarget: "12%",
+    prices: { 2500: 45, 5000: 70, 10000: 115, 20000: 205, 50000: 430, 100000: 740 },
+  },
+  {
+    ...COMMON,
     id: "two-step",
-    name: "2-Step Challenge",
-    tabLabel: "2-Step Challenge",
-    tagline: "Two phases with the most room to breathe.",
-    drawdownType: "Static",
+    name: "2 Step",
+    tabLabel: "2 Step",
+    tagline: "Two phases (10% + 5%) with room to breathe. Funded max drawdown 35%.",
     dailyLossPct: 5,
     maxDrawdownPct: 10,
-    leverage: "1:100",
-    profitTarget: "8% / 5%",
-    minTradingDays: "5 Days",
-    profitSplit: "Up to 100%",
-    payouts: "Bi-Weekly / On-Demand",
-    discountPct: 25,
-    enabled: true,
-    prices: { 2500: 19, 5000: 32, 10000: 55, 25000: 139, 50000: 249, 100000: 459 },
+    profitTarget: "10% / 5%",
+    prices: { 2500: 30, 5000: 45, 10000: 75, 20000: 140, 50000: 290, 100000: 520 },
+  },
+  {
+    ...COMMON,
+    id: "two-step-prime",
+    name: "2 Step Prime",
+    tabLabel: "2 Step Prime",
+    tagline: "Two phases (10% + 5%) with a 50% funded max drawdown.",
+    dailyLossPct: 5,
+    maxDrawdownPct: 10,
+    profitTarget: "10% / 5%",
+    prices: { 2500: 35, 5000: 55, 10000: 90, 20000: 165, 50000: 340, 100000: 600 },
+  },
+  {
+    ...COMMON,
+    id: "two-step-pro",
+    name: "2 Step Pro",
+    tabLabel: "2 Step Pro",
+    tagline: "Smaller targets (5% + 8%) and a 60% funded max drawdown.",
+    dailyLossPct: 5,
+    maxDrawdownPct: 8,
+    profitTarget: "5% / 8%",
+    prices: { 2500: 38, 5000: 58, 10000: 95, 20000: 170, 50000: 350, 100000: 620 },
+  },
+  {
+    ...COMMON,
+    id: "three-step",
+    name: "3 Step",
+    tabLabel: "3 Step",
+    tagline: "Three small steps (4% + 5% + 8%). Funded max drawdown up to 80%.",
+    dailyLossPct: 3,
+    maxDrawdownPct: 8,
+    minTradingDays: "2 / 2 / 3 profitable days per phase",
+    profitTarget: "4% / 5% / 8%",
+    prices: { 2500: 25, 5000: 38, 10000: 62, 20000: 115, 50000: 240, 100000: 430 },
   },
 ];
 

@@ -59,7 +59,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <FullScreen>
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-400" />
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" />
       </FullScreen>
     );
   }
@@ -67,7 +67,7 @@ export default function AdminPage() {
   if (!user) {
     return (
       <FullScreen>
-        <Logo className="mb-6" />
+        <Logo onDark className="mb-6" />
         <h1 className="font-display text-2xl font-bold text-white">Admin Panel</h1>
         <p className="mt-2 text-sm text-slate-400">Sign in with your admin account to continue.</p>
         <button type="button" onClick={() => setAuthOpen(true)} className="btn-glow mt-6 w-full">
@@ -131,8 +131,8 @@ function AdminPanel({
       <header className="sticky top-0 z-40 border-b border-white/10 bg-obsidian/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <Logo />
-            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/30">
+            <Logo onDark />
+            <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-blue-300 ring-1 ring-blue-400/30">
               Admin
             </span>
           </div>
@@ -179,7 +179,7 @@ function AdminPanel({
               </p>
             </>
           ) : (
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-400" />
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" />
           )}
         </div>
       ) : (
@@ -292,8 +292,8 @@ function Workspace() {
             onClick={() => setTab(id)}
             className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
               tab === id
-                ? "border-emerald-400 bg-emerald-500/20 text-emerald-300"
-                : "border-white/10 bg-white/5 text-slate-300 hover:border-emerald-500/40 hover:text-white"
+                ? "border-blue-400 bg-blue-500/20 text-blue-300"
+                : "border-white/10 bg-white/5 text-slate-300 hover:border-blue-500/40 hover:text-white"
             }`}
           >
             <Icon className="h-4 w-4" />
@@ -318,7 +318,7 @@ function Workspace() {
                 { label: "Pending orders", value: String(pending) },
                 { label: "Confirmed revenue", value: formatUSD(revenue) },
               ].map((s) => (
-                <div key={s.label} className="rounded-2xl border border-emerald-500/20 bg-card/70 p-5">
+                <div key={s.label} className="rounded-2xl border border-blue-500/20 bg-card/70 p-5">
                   <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{s.label}</p>
                   <p className="mt-2 font-display text-3xl font-bold text-white">{s.value}</p>
                 </div>
@@ -339,7 +339,7 @@ function Workspace() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-emerald-400">{formatUSD(o.price)}</span>
+                        <span className="font-semibold text-blue-400">{formatUSD(o.price)}</span>
                         <StatusBadge status={o.status} />
                       </div>
                     </li>
@@ -389,11 +389,11 @@ function Workspace() {
 
       {/* Sticky save bar */}
       {(dirty || notice) && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-emerald-500/30 bg-obsidian/95 backdrop-blur-md">
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-blue-500/30 bg-obsidian/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <p
               className={`flex items-center gap-2 text-sm ${
-                notice?.type === "err" ? "text-red-300" : dirty ? "text-amber-200" : "text-emerald-300"
+                notice?.type === "err" ? "text-red-300" : dirty ? "text-amber-200" : "text-blue-300"
               }`}
             >
               {notice?.type === "err" ? (

@@ -26,7 +26,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">
-            <Logo />
+            <Logo onDark />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
               {config.brandName} gives skilled traders access to firm capital with simple rules, fast payouts
               and up to 100% profit split. Trade your strategy, keep your profits.
@@ -50,7 +50,7 @@ export default function Footer() {
                 <li key={l.label}>
                   <a
                     href={l.href}
-                    className="text-sm text-slate-400 transition hover:text-emerald-400"
+                    className="text-sm text-slate-400 transition hover:text-blue-400"
                   >
                     {l.label}
                   </a>
@@ -66,7 +66,7 @@ export default function Footer() {
                 <li key={l.label}>
                   <a
                     href={l.href}
-                    className="text-sm text-slate-400 transition hover:text-emerald-400"
+                    className="text-sm text-slate-400 transition hover:text-blue-400"
                   >
                     {l.label}
                   </a>

@@ -50,7 +50,7 @@ function FormField({ icon: Icon, label, rightSlot, ...props }: Field) {
         <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
         <input
           {...props}
-          className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-11 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20 sm:text-sm"
+          className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-11 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 sm:text-sm"
         />
         {rightSlot && (
           <span className="absolute right-2 top-1/2 -translate-y-1/2">{rightSlot}</span>
@@ -203,14 +203,14 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
 
   const selectionBox =
     order && model ? (
-      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
         <div>
-          <p className="text-xs text-emerald-300/80">Your selection</p>
+          <p className="text-xs text-blue-300/80">Your selection</p>
           <p className="text-sm font-semibold text-white">
             {model.name} · {formatSize(order.size)}
           </p>
         </div>
-        <p className="font-display text-xl font-bold text-emerald-400">{formatUSD(order.price)}</p>
+        <p className="font-display text-xl font-bold text-blue-400">{formatUSD(order.price)}</p>
       </div>
     ) : null;
 
@@ -237,7 +237,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
         aria-hidden="true"
       />
 
-      <div className="relative max-h-[94vh] w-full max-w-md animate-modal-in overflow-y-auto rounded-t-3xl border border-emerald-500/20 bg-[#0D1320] shadow-glow-lg sm:rounded-2xl">
+      <div className="relative max-h-[94vh] w-full max-w-md animate-modal-in overflow-y-auto rounded-t-3xl border border-blue-500/20 bg-[#0D1320] shadow-glow-lg sm:rounded-2xl">
         <button
           type="button"
           onClick={onClose}
@@ -250,7 +250,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
         <div className="p-6 sm:p-8">
           {success ? (
             <div className="py-6 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 shadow-glow">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/15 text-blue-400 shadow-glow">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
               <h2 id="auth-title" className="mt-5 font-display text-2xl font-bold text-white">
@@ -270,7 +270,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
             </div>
           ) : confirmOnly && user ? (
             <>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Confirm your order
               </span>
@@ -297,7 +297,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
             </>
           ) : (
             <>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Secure Client Portal
               </span>
@@ -327,7 +327,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
                     onClick={() => onModeChange(m)}
                     className={`rounded-lg py-2 text-sm font-semibold transition-all ${
                       mode === m
-                        ? "bg-emerald-500/20 text-emerald-300 shadow-glow"
+                        ? "bg-blue-500/20 text-blue-300 shadow-glow"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >

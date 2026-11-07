@@ -62,7 +62,7 @@ export default function OrdersTable({ orders, onStatusChange }: OrdersTableProps
                 </td>
                 <td className="px-4 py-3 text-slate-300">{o.modelName}</td>
                 <td className="px-4 py-3 text-slate-300">{formatSize(o.size)}</td>
-                <td className="px-4 py-3 font-semibold text-emerald-400">{formatUSD(o.price)}</td>
+                <td className="px-4 py-3 font-semibold text-blue-400">{formatUSD(o.price)}</td>
                 <td className="px-4 py-3">
                   <select
                     aria-label={`Status for order ${o.id}`}

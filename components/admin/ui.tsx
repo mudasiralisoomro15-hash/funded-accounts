@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export const inputCls =
-  "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20";
+  "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20";
 
 export function Field({
   label,
@@ -45,7 +45,7 @@ export function Toggle({
     >
       <span
         className={`relative h-6 w-11 rounded-full transition-colors ${
-          checked ? "bg-emerald-500" : "bg-white/15"
+          checked ? "bg-blue-500" : "bg-white/15"
         }`}
       >
         <span
