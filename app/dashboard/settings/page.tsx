@@ -46,7 +46,7 @@ export default function SettingsPage() {
         <section className="dash-card p-5">
           <h2 className="dash-text font-semibold">Identity verification (KYC)</h2>
           <p className="dash-sub mt-1 text-sm">
-            Identity verification is requested before your first payout. This feature is coming soon.
+            Identity verification is required before your first payout. Submit it from the Payout page.
           </p>
         </section>
 
