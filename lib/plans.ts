@@ -6,13 +6,7 @@
 export const ACCOUNT_SIZES = [2500, 5000, 10000, 20000, 50000, 100000] as const;
 export type AccountSize = (typeof ACCOUNT_SIZES)[number];
 
-export type ModelId =
-  | "one-step"
-  | "one-step-pro"
-  | "two-step"
-  | "two-step-prime"
-  | "two-step-pro"
-  | "three-step";
+export type ModelId = string;
 export type DrawdownType = "Static" | "Trailing";
 
 export interface ModelConfig {
