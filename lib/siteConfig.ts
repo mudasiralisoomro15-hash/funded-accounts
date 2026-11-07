@@ -24,6 +24,8 @@ export interface SiteConfig {
   models: ModelConfig[];
   /** Account size that gets the orange "Best value" badge (0 = none). */
   bestValueSize: number;
+  /** Commission (%) a referrer earns on every paid order of a referred trader. */
+  referralPct: number;
   faqs: FaqItem[];
 }
 
@@ -90,6 +92,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   },
   models: DEFAULT_MODELS,
   bestValueSize: 50000,
+  referralPct: 15,
   faqs: DEFAULT_FAQS,
 };
 
@@ -123,6 +126,7 @@ export function mergeConfig(saved: Partial<SiteConfig> | null | undefined): Site
     hero: { ...base.hero, ...(saved.hero ?? {}) },
     models,
     bestValueSize: typeof saved.bestValueSize === "number" ? saved.bestValueSize : base.bestValueSize,
+    referralPct: typeof saved.referralPct === "number" ? saved.referralPct : base.referralPct,
     faqs: Array.isArray(saved.faqs) ? saved.faqs : base.faqs,
   };
 }

@@ -67,5 +67,20 @@ service cloud.firestore {
                         && request.resource.data.status == 'pending');
       allow delete: if isAdmin();
     }
+
+    // Referrals: created once by the new user when they sign up via a link.
+    match /referrals/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.referredUid == uid
+                    && request.resource.data.referrerId != uid;
+      allow read: if signedIn() && (resource.data.referrerId == request.auth.uid || request.auth.uid == uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Commissions are written only by admin; the referrer can read their own.
+    match /commissions/{commissionId} {
+      allow read: if signedIn() && (resource.data.referrerId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
   }
 }

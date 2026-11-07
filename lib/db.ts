@@ -15,6 +15,8 @@ import { getDb, isFirebaseConfigured } from "./firebase";
 import { mergeConfig, type SiteConfig } from "./siteConfig";
 import type {
   AppUser,
+  CommissionRecord,
+  CommissionStatus,
   Coupon,
   KycRecord,
   KycStatus,
@@ -25,6 +27,7 @@ import type {
   OrderStatus,
   PayoutRecord,
   PayoutStatus,
+  ReferralRecord,
   UserRecord,
 } from "./types";
 
@@ -39,6 +42,9 @@ const KEYS = {
   coupons: "fx_coupons",
   payouts: "fx_payouts",
   kyc: "fx_kyc",
+  referrals: "fx_referrals",
+  commissions: "fx_commissions",
+  ref: "fx_ref",
 };
 
 function lsGet<T>(key: string, fallback: T): T {
@@ -107,6 +113,7 @@ export async function saveUserProfile(user: AppUser): Promise<void> {
       });
     }
     lsSet(KEYS.users, users);
+    if (i < 0) await registerReferral(user);
     return;
   }
 
@@ -124,6 +131,7 @@ export async function saveUserProfile(user: AppUser): Promise<void> {
       createdAt: now,
       lastLoginAt: now,
     });
+    await registerReferral(user);
   }
 }
 
@@ -319,4 +327,131 @@ export async function updateKycStatus(userId: string, status: KycStatus, note = 
     return;
   }
   await updateDoc(doc(getDb(), "kyc", userId), { status, note });
+}
+
+// ───────────────────────── Referrals & commissions ─────────────────────────
+
+/** Remember ?ref=<uid> from the link a visitor arrived with. */
+export function captureReferral(): void {
+  try {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref && /^[A-Za-z0-9_-]{6,128}$/.test(ref)) window.localStorage.setItem(KEYS.ref, ref);
+  } catch {
+    /* storage blocked */
+  }
+}
+
+/** Called only for brand-new accounts: links them to whoever referred them. */
+async function registerReferral(user: AppUser): Promise<void> {
+  let refId: string | null = null;
+  try {
+    refId = window.localStorage.getItem(KEYS.ref);
+  } catch {
+    return;
+  }
+  if (!refId || refId === user.uid) return;
+  const rec: ReferralRecord = {
+    referredUid: user.uid,
+    referrerId: refId,
+    name: user.name,
+    email: user.email,
+    createdAt: new Date().toISOString(),
+  };
+  try {
+    if (!isFirebaseConfigured) {
+      const rest = lsGet<ReferralRecord[]>(KEYS.referrals, []).filter((r) => r.referredUid !== user.uid);
+      lsSet(KEYS.referrals, [rec, ...rest]);
+    } else {
+      await setDoc(doc(getDb(), "referrals", user.uid), plain(rec));
+    }
+  } catch (err) {
+    console.warn("Could not save referral:", err);
+  }
+}
+
+export async function listMyReferrals(uid: string): Promise<ReferralRecord[]> {
+  if (!isFirebaseConfigured) {
+    return lsGet<ReferralRecord[]>(KEYS.referrals, []).filter((r) => r.referrerId === uid).sort(byNewest);
+  }
+  const snap = await getDocs(query(collection(getDb(), "referrals"), where("referrerId", "==", uid)));
+  return snap.docs.map((d) => d.data() as ReferralRecord).sort(byNewest);
+}
+
+export async function listMyCommissions(uid: string): Promise<CommissionRecord[]> {
+  if (!isFirebaseConfigured) {
+    return lsGet<CommissionRecord[]>(KEYS.commissions, []).filter((c) => c.referrerId === uid).sort(byNewest);
+  }
+  const snap = await getDocs(query(collection(getDb(), "commissions"), where("referrerId", "==", uid)));
+  return snap.docs.map((d) => ({ ...(d.data() as Omit<CommissionRecord, "id">), id: d.id })).sort(byNewest);
+}
+
+/** Admin: all commissions. */
+export async function listCommissions(): Promise<CommissionRecord[]> {
+  if (!isFirebaseConfigured) return lsGet<CommissionRecord[]>(KEYS.commissions, []).sort(byNewest);
+  const snap = await getDocs(collection(getDb(), "commissions"));
+  return snap.docs.map((d) => ({ ...(d.data() as Omit<CommissionRecord, "id">), id: d.id })).sort(byNewest);
+}
+
+export async function updateCommissionStatus(id: string, status: CommissionStatus): Promise<void> {
+  if (!isFirebaseConfigured) {
+    lsSet(
+      KEYS.commissions,
+      lsGet<CommissionRecord[]>(KEYS.commissions, []).map((c) => (c.id === id ? { ...c, status } : c))
+    );
+    return;
+  }
+  await updateDoc(doc(getDb(), "commissions", id), { status });
+}
+
+/**
+ * Admin: keeps the commission of an order in step with the order status.
+ * Paid/active order of a referred trader -> pending commission (ratePct of the price).
+ * Cancelled/pending order -> a still-pending commission is cancelled.
+ * Returns the commission when one was created or changed.
+ */
+export async function syncCommissionForOrder(
+  order: OrderRecord,
+  status: OrderStatus,
+  ratePct: number
+): Promise<CommissionRecord | null> {
+  let referral: ReferralRecord | null;
+  let existing: CommissionRecord | null;
+  if (!isFirebaseConfigured) {
+    referral = lsGet<ReferralRecord[]>(KEYS.referrals, []).find((r) => r.referredUid === order.userId) ?? null;
+    existing = lsGet<CommissionRecord[]>(KEYS.commissions, []).find((c) => c.id === order.id) ?? null;
+  } else {
+    const rs = await getDoc(doc(getDb(), "referrals", order.userId));
+    referral = rs.exists() ? (rs.data() as ReferralRecord) : null;
+    const cs = await getDoc(doc(getDb(), "commissions", order.id));
+    existing = cs.exists() ? ({ ...(cs.data() as Omit<CommissionRecord, "id">), id: order.id }) : null;
+  }
+  if (!referral) return null;
+
+  const earns = status === "paid" || status === "active";
+  if (earns && !existing) {
+    const rec: CommissionRecord = {
+      id: order.id,
+      referrerId: referral.referrerId,
+      referredUid: order.userId,
+      buyerName: order.name,
+      orderId: order.id,
+      orderPrice: order.price,
+      ratePct,
+      amount: Math.round(order.price * ratePct) / 100,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    if (!isFirebaseConfigured) lsSet(KEYS.commissions, [rec, ...lsGet<CommissionRecord[]>(KEYS.commissions, [])]);
+    else await setDoc(doc(getDb(), "commissions", rec.id), plain(rec));
+    return rec;
+  }
+  if (earns && existing && existing.status === "cancelled") {
+    await updateCommissionStatus(existing.id, "pending");
+    return { ...existing, status: "pending" };
+  }
+  if (!earns && existing && existing.status === "pending") {
+    await updateCommissionStatus(existing.id, "cancelled");
+    return { ...existing, status: "cancelled" };
+  }
+  return null;
 }

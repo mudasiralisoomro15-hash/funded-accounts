@@ -44,6 +44,18 @@ export default function ContentEditor({ config, onChange }: ContentEditorProps) 
               onChange={(e) => onChange({ ...config, supportEmail: e.target.value })}
             />
           </Field>
+          <Field label="Referral commission (%)" hint="Earned by a trader on every paid order of someone they referred.">
+            <input
+              type="number"
+              min={0}
+              max={90}
+              className={inputCls}
+              value={config.referralPct}
+              onChange={(e) =>
+                onChange({ ...config, referralPct: Math.min(90, Math.max(0, Number(e.target.value) || 0)) })
+              }
+            />
+          </Field>
         </div>
       </Panel>
 

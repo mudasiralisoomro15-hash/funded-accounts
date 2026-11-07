@@ -11,6 +11,7 @@ import {
   Loader2,
   LogOut,
   Receipt,
+  Gift,
   Ticket,
   Wallet,
   BadgeCheck,
@@ -31,10 +32,14 @@ import OrdersTable from "@/components/admin/OrdersTable";
 import CouponsManager from "@/components/admin/CouponsManager";
 import PayoutsTable from "@/components/admin/PayoutsTable";
 import KycTable from "@/components/admin/KycTable";
+import ReferralsTable from "@/components/admin/ReferralsTable";
 import StatusBadge from "@/components/StatusBadge";
 import { Panel, formatDate } from "@/components/admin/ui";
 import {
   deleteCoupon,
+  listCommissions,
+  syncCommissionForOrder,
+  updateCommissionStatus,
   listCoupons,
   listKyc,
   listOrders,
@@ -49,6 +54,8 @@ import {
 import { DEFAULT_SITE_CONFIG, cloneConfig, type SiteConfig } from "@/lib/siteConfig";
 import { formatSize, formatUSD } from "@/lib/plans";
 import type {
+  CommissionRecord,
+  CommissionStatus,
   Coupon,
   KycRecord,
   KycStatus,
@@ -60,7 +67,7 @@ import type {
   UserRecord,
 } from "@/lib/types";
 
-type Tab = "overview" | "plans" | "content" | "users" | "orders" | "coupons" | "payouts" | "kyc";
+type Tab = "overview" | "plans" | "content" | "users" | "orders" | "coupons" | "payouts" | "kyc" | "referrals";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -71,6 +78,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "coupons", label: "Coupons", icon: Ticket },
   { id: "payouts", label: "Payouts", icon: Wallet },
   { id: "kyc", label: "KYC", icon: BadgeCheck },
+  { id: "referrals", label: "Referrals", icon: Gift },
 ];
 
 function FullScreen({ children }: { children: React.ReactNode }) {
@@ -233,20 +241,22 @@ function Workspace() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [kyc, setKyc] = useState<KycRecord[]>([]);
+  const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(config), [draft, config]);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listUsers(), listOrders(), listCoupons(), listPayouts(), listKyc()])
-      .then(([u, o, c, p, k]) => {
+    Promise.all([listUsers(), listOrders(), listCoupons(), listPayouts(), listKyc(), listCommissions()])
+      .then(([u, o, c, p, k, cm]) => {
         if (!alive) return;
         setUsers(u);
         setOrders(o);
         setCoupons(c);
         setPayouts(p);
         setKyc(k);
+        setCommissions(cm);
       })
       .catch((e) => {
         if (alive) setDataError(e instanceof Error ? e.message : "Could not load users/orders.");
@@ -307,6 +317,11 @@ function Workspace() {
     setOrders((list) => list.map((o) => (o.id === id ? { ...o, status } : o)));
     try {
       await updateOrderStatus(id, status);
+      const order = previous.find((o) => o.id === id);
+      if (order) {
+        const changed = await syncCommissionForOrder(order, status, config.referralPct).catch(() => null);
+        if (changed) setCommissions(await listCommissions());
+      }
     } catch (e) {
       setOrders(previous);
       setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not update order." });
@@ -336,6 +351,17 @@ function Workspace() {
     } catch (e) {
       setPayouts(previous);
       setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not update payout." });
+    }
+  }
+
+  async function handleCommission(id: string, status: CommissionStatus) {
+    const previous = commissions;
+    setCommissions((list) => list.map((c) => (c.id === id ? { ...c, status } : c)));
+    try {
+      await updateCommissionStatus(id, status);
+    } catch (e) {
+      setCommissions(previous);
+      setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not update commission." });
     }
   }
 
@@ -474,6 +500,9 @@ function Workspace() {
         )}
         {tab === "payouts" && <PayoutsTable payouts={payouts} onStatusChange={handlePayout} />}
         {tab === "kyc" && <KycTable items={kyc} onDecision={handleKyc} />}
+        {tab === "referrals" && (
+          <ReferralsTable commissions={commissions} users={users} ratePct={config.referralPct} onStatusChange={handleCommission} />
+        )}
       </div>
 
       {/* Sticky save bar */}

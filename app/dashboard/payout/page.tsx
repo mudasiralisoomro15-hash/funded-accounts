@@ -41,7 +41,7 @@ export default function PayoutPage() {
     try {
       const [k, p] = await Promise.all([getMyKyc(uid), listMyPayouts(uid)]);
       setKyc(k);
-      setPayouts(p);
+      setPayouts(p.filter((x) => x.type !== "referral"));
     } catch (e) {
       setKyc(null);
       setPayouts([]);

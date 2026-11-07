@@ -50,6 +50,31 @@ export interface Coupon {
   createdAt: string;
 }
 
+/** Created once when a visitor signs up through someone's referral link. */
+export interface ReferralRecord {
+  referredUid: string;
+  referrerId: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
+export type CommissionStatus = "pending" | "released" | "cancelled";
+
+/** One commission per paid order of a referred trader (document id = order id). */
+export interface CommissionRecord {
+  id: string;
+  referrerId: string;
+  referredUid: string;
+  buyerName: string;
+  orderId: string;
+  orderPrice: number;
+  ratePct: number;
+  amount: number;
+  status: CommissionStatus;
+  createdAt: string;
+}
+
 export type PayoutStatus = "pending" | "approved" | "paid" | "rejected";
 
 export interface PayoutRecord {
@@ -59,6 +84,8 @@ export interface PayoutRecord {
   name: string;
   amount: number;
   method: "USDT";
+  /** "referral" = withdrawal of referral commission. */
+  type?: "profit" | "referral";
   address: string;
   status: PayoutStatus;
   createdAt: string;
