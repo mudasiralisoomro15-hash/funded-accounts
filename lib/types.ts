@@ -27,6 +27,18 @@ export interface UserRecord {
   lastLoginAt: string;
 }
 
+/** Account numbers the admin types in by hand (until live MetaApi data is connected). */
+export interface AccountStats {
+  /** "Phase 1" | "Phase 2" | "Funded" */
+  phase: string;
+  balance: number;
+  equity: number;
+  todayProfit: number;
+  /** Trading days completed so far. */
+  tradingDays: number;
+  updatedAt?: string;
+}
+
 export interface OrderRecord {
   id: string;
   userId: string;
@@ -45,6 +57,8 @@ export interface OrderRecord {
   /** Shown to the customer when the payment was declined. */
   declineReason?: string;
   declinedAt?: string;
+  /** Balance / equity / phase typed by the admin. Missing = fresh account. */
+  stats?: AccountStats;
   /** MT5 login handed over by the admin when the account is delivered. */
   credentials?: OrderCredentials;
 }
@@ -57,7 +71,7 @@ export interface OrderCredentials {
 
 export type NewOrder = Omit<
   OrderRecord,
-  "id" | "status" | "createdAt" | "credentials" | "txid" | "txSubmittedAt" | "declineReason" | "declinedAt"
+  "id" | "status" | "createdAt" | "credentials" | "txid" | "txSubmittedAt" | "declineReason" | "declinedAt" | "stats"
 >;
 
 export interface Coupon {

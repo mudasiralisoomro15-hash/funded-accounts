@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Check, ExternalLink, KeyRound, Trash2, X } from "lucide-react";
+import { BarChart3, Check, ExternalLink, KeyRound, Trash2, X } from "lucide-react";
 import { formatSize, formatUSD } from "@/lib/plans";
-import type { OrderCredentials, OrderRecord, OrderStatus } from "@/lib/types";
+import type { AccountStats, OrderCredentials, OrderRecord, OrderStatus } from "@/lib/types";
+import { PHASES, resolveStats } from "@/lib/objectives";
 import { Field, Panel, formatDate, inputCls } from "./ui";
 import { explorerFor } from "@/components/PaymentPanel";
 
@@ -18,6 +19,69 @@ interface OrdersTableProps {
   onCredentials: (id: string, creds: OrderCredentials) => Promise<void>;
   onDecline: (id: string, reason: string) => void;
   onDelete: (ids: string[]) => Promise<void>;
+  onStats: (id: string, stats: AccountStats) => Promise<void>;
+}
+
+function StatsForm({
+  order,
+  onSave,
+}: {
+  order: OrderRecord;
+  onSave: (id: string, stats: AccountStats) => Promise<void>;
+}) {
+  const start = resolveStats(order);
+  const [phase, setPhase] = useState(start.phase);
+  const [balance, setBalance] = useState(String(start.balance));
+  const [equity, setEquity] = useState(String(start.equity));
+  const [today, setToday] = useState(String(start.todayProfit));
+  const [days, setDays] = useState(String(start.tradingDays));
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const num = (v: string) => (Number.isFinite(Number(v)) && v.trim() !== "" ? Number(v) : 0);
+
+  async function save() {
+    setState("saving");
+    try {
+      await onSave(order.id, {
+        phase,
+        balance: num(balance),
+        equity: num(equity),
+        todayProfit: num(today),
+        tradingDays: Math.max(0, Math.round(num(days))),
+      });
+      setState("saved");
+    } catch {
+      setState("error");
+    }
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-6 sm:items-end">
+      <Field label="Phase">
+        <select className={inputCls} value={phase} onChange={(e) => setPhase(e.target.value)}>
+          {PHASES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Balance ($)">
+        <input className={inputCls} inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} />
+      </Field>
+      <Field label="Equity ($)">
+        <input className={inputCls} inputMode="decimal" value={equity} onChange={(e) => setEquity(e.target.value)} />
+      </Field>
+      <Field label="Today's profit ($)">
+        <input className={inputCls} inputMode="decimal" value={today} onChange={(e) => setToday(e.target.value)} />
+      </Field>
+      <Field label="Trading days">
+        <input className={inputCls} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
+      </Field>
+      <button type="button" onClick={save} disabled={state === "saving"} className="btn-glow px-4 py-2.5 text-sm">
+        {state === "saving" ? "Saving…" : state === "saved" ? "Saved ✓" : state === "error" ? "Failed, retry" : "Save stats"}
+      </button>
+    </div>
+  );
 }
 
 function CredentialsForm({
@@ -59,9 +123,10 @@ function CredentialsForm({
   );
 }
 
-export default function OrdersTable({ orders, onStatusChange, onCredentials, onDecline, onDelete }: OrdersTableProps) {
+export default function OrdersTable({ orders, onStatusChange, onCredentials, onDecline, onDelete, onStats }: OrdersTableProps) {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [open, setOpen] = useState<string | null>(null);
+  const [openStats, setOpenStats] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
 
@@ -267,6 +332,7 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
                   </select>
                 </td>
                 <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => setOpen(open === o.id ? null : o.id)}
@@ -276,12 +342,29 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
                   >
                     <KeyRound className="h-3.5 w-3.5" /> Login
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpenStats(openStats === o.id ? null : o.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+                      o.stats ? "border-blue-500/30 text-blue-300" : "border-white/10 text-slate-300"
+                    } hover:bg-white/5`}
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" /> Stats
+                  </button>
+                  </div>
                 </td>
               </tr>
               {open === o.id && (
                 <tr className="border-b border-white/5 bg-white/[0.02]">
                   <td colSpan={9} className="px-4 py-4">
                     <CredentialsForm order={o} onSave={onCredentials} />
+                  </td>
+                </tr>
+              )}
+              {openStats === o.id && (
+                <tr className="border-b border-white/5 bg-white/[0.02]">
+                  <td colSpan={9} className="px-4 py-4">
+                    <StatsForm order={o} onSave={onStats} />
                   </td>
                 </tr>
               )}

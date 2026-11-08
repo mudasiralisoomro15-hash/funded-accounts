@@ -61,6 +61,7 @@ import {
   updateOrderStatus,
   declineOrderPayment,
   deleteOrders,
+  updateOrderStats,
   updatePayoutStatus,
 } from "@/lib/db";
 import { diffConfig } from "@/lib/configDiff";
@@ -74,6 +75,7 @@ import type {
   Coupon,
   KycRecord,
   KycStatus,
+  AccountStats,
   OrderCredentials,
   OrderRecord,
   OrderStatus,
@@ -439,6 +441,12 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
     }
   }
 
+  async function handleStats(id: string, stats: AccountStats) {
+    if (blocked()) throw new Error("Not allowed");
+    await updateOrderStats(id, stats);
+    setOrders((list) => list.map((o) => (o.id === id ? { ...o, stats: { ...stats, updatedAt: new Date().toISOString() } } : o)));
+  }
+
   async function handleCredentials(id: string, credentials: OrderCredentials) {
     if (needsApproval) throw new Error("Not allowed");
     await updateOrderCredentials(id, credentials);
@@ -637,7 +645,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
         {tab === "content" && <ContentEditor config={draft} onChange={setDraft} />}
         {tab === "users" && <UsersTable users={users} />}
         {tab === "orders" && (
-          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} onDecline={handleDecline} onDelete={handleDeleteOrders} />
+          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} onDecline={handleDecline} onDelete={handleDeleteOrders} onStats={handleStats} />
         )}
         {tab === "coupons" && (
           <CouponsManager coupons={coupons} onSave={handleCouponSave} onDelete={handleCouponDelete} />

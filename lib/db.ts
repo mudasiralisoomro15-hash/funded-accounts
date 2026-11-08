@@ -14,6 +14,7 @@ import {
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { mergeConfig, type SiteConfig } from "./siteConfig";
 import type {
+  AccountStats,
   AdminRecord,
   AdminRole,
   AppUser,
@@ -262,6 +263,17 @@ export async function updateOrderCredentials(id: string, credentials: OrderCrede
     return;
   }
   await updateDoc(doc(getDb(), "orders", id), { credentials });
+}
+
+/** Admin: balance / equity / phase of one account (shown on the customer's dashboard). */
+export async function updateOrderStats(id: string, stats: AccountStats): Promise<void> {
+  const value = { ...stats, updatedAt: new Date().toISOString() };
+  if (!isFirebaseConfigured) {
+    const orders = lsGet<OrderRecord[]>(KEYS.orders, []).map((o) => (o.id === id ? { ...o, stats: value } : o));
+    lsSet(KEYS.orders, orders);
+    return;
+  }
+  await updateDoc(doc(getDb(), "orders", id), { stats: value });
 }
 
 // ───────────────────────── Coupons ─────────────────────────

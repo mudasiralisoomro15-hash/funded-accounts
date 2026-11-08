@@ -15,6 +15,8 @@ import {
   LogOut,
   Menu,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Receipt,
   Settings,
@@ -62,9 +64,29 @@ function BrandBlock() {
   );
 }
 
-function SidebarNav({ pathname, isAdmin }: { pathname: string; isAdmin: boolean }) {
+function SidebarNav({
+  pathname,
+  isAdmin,
+  onCollapse,
+}: {
+  pathname: string;
+  isAdmin: boolean;
+  /** Desktop only: closes the sidebar. */
+  onCollapse?: () => void;
+}) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {onCollapse && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          title="Close sidebar"
+          onClick={onCollapse}
+          className="dash-sub dash-hover absolute right-2 top-4 rounded-lg p-2"
+        >
+          <PanelLeftClose className="h-5 w-5" />
+        </button>
+      )}
       <BrandBlock />
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3" aria-label="Dashboard">
         {NAV.map(({ href, label, icon: Icon }) => {
@@ -108,11 +130,32 @@ function ShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const [drawer, setDrawer] = useState(false);
+  // Desktop sidebar: open by default, the user can close it (remembered in this browser).
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menu, setMenu] = useState(false);
   const [banner, setBanner] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const closeAuth = useCallback(() => setAuthOpen(false), []);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("fx_sidebar") === "closed") setSidebarOpen(false);
+    } catch {
+      /* storage blocked: stay open */
+    }
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((v) => {
+      try {
+        localStorage.setItem("fx_sidebar", v ? "closed" : "open");
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
+  }, []);
 
   useEffect(() => {
     setDrawer(false);
@@ -167,8 +210,12 @@ function ShellInner({ children }: { children: ReactNode }) {
   return (
     <div className={root}>
       {/* Desktop sidebar */}
-      <aside className="dash-surface dash-border fixed inset-y-0 left-0 z-30 hidden w-64 border-r lg:block">
-        <SidebarNav pathname={pathname} isAdmin={isAdmin} />
+      <aside
+        className={`dash-surface dash-border fixed inset-y-0 left-0 z-30 hidden w-64 border-r ${
+          sidebarOpen ? "lg:block" : ""
+        }`}
+      >
+        <SidebarNav pathname={pathname} isAdmin={isAdmin} onCollapse={toggleSidebar} />
       </aside>
 
       {/* Mobile drawer */}
@@ -194,7 +241,7 @@ function ShellInner({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className={sidebarOpen ? "lg:pl-64" : ""}>
         {announcement.enabled && announcement.text && banner && (
           <div className="flex items-start justify-between gap-3 bg-blue-600 px-4 py-2 text-xs font-semibold text-white sm:text-sm">
             <span className="flex-1 text-center">{announcement.text}</span>
@@ -214,7 +261,15 @@ function ShellInner({ children }: { children: ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="hidden lg:block" />
+          <button
+            type="button"
+            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            onClick={toggleSidebar}
+            className="dash-sub dash-hover hidden rounded-lg p-2 lg:block"
+          >
+            {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+          </button>
 
           <div className="flex items-center gap-1.5">
             <button
