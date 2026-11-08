@@ -356,7 +356,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
                 Complete your payment
               </h2>
               <p className="mt-1 text-sm text-slate-400">
-                {orderSummary()}. Your order is saved. Pay, then paste the transaction ID below.
+                {orderSummary()}. Your order is saved. Just follow these simple steps.
               </p>
               <div className="mt-5">
                 <PaymentPanel

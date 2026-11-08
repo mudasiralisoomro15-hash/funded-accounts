@@ -29,14 +29,34 @@ export function diffConfig(before: SiteConfig, after: SiteConfig): { summary: st
     }
   }
 
-  for (const group of ["announcement", "hero", "payment"] as const) {
+  for (const group of ["announcement", "hero"] as const) {
     if (same(before[group], after[group])) continue;
     patch[group] = after[group];
     const b = before[group] as unknown as Record<string, unknown>;
     const a = after[group] as unknown as Record<string, unknown>;
     for (const k of Object.keys(a)) {
-      if (!same(b[k], a[k])) summary.push(`${group === "hero" ? "Hero" : group === "payment" ? "Payment" : "Announcement"} · ${k}: ${fmt(b[k])} → ${fmt(a[k])}`);
+      if (!same(b[k], a[k])) summary.push(`${group === "hero" ? "Hero" : "Announcement"} · ${k}: ${fmt(b[k])} → ${fmt(a[k])}`);
     }
+  }
+
+  if (!same(before.payment, after.payment)) {
+    patch.payment = after.payment;
+    const bp = new Map(before.payment.methods.map((m) => [m.id, m]));
+    const ap = new Map(after.payment.methods.map((m) => [m.id, m]));
+    for (const m of before.payment.methods) if (!ap.has(m.id)) summary.push(`Payment method removed: ${m.name}`);
+    for (const m of after.payment.methods) {
+      const old = bp.get(m.id);
+      if (!old) {
+        summary.push(`Payment method added: ${m.name} → ${m.address || "(no address)"}`);
+        continue;
+      }
+      const o = old as unknown as Record<string, unknown>;
+      const n = m as unknown as Record<string, unknown>;
+      for (const k of ["name", "coin", "network", "address", "enabled"]) {
+        if (!same(o[k], n[k])) summary.push(`Payment · ${m.name} · ${k}: ${fmt(o[k])} → ${fmt(n[k])}`);
+      }
+    }
+    if (before.payment.note !== after.payment.note) summary.push("Payment note changed");
   }
 
   if (!same(before.models, after.models)) {

@@ -5,7 +5,7 @@ import { Check, ExternalLink, KeyRound, X } from "lucide-react";
 import { formatSize, formatUSD } from "@/lib/plans";
 import type { OrderCredentials, OrderRecord, OrderStatus } from "@/lib/types";
 import { Field, Panel, formatDate, inputCls } from "./ui";
-import { isChainTxid } from "@/components/PaymentPanel";
+import { explorerFor } from "@/components/PaymentPanel";
 
 const STATUSES: OrderStatus[] = ["pending", "review", "paid", "active", "declined", "cancelled"];
 
@@ -139,16 +139,19 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
                       {dupTx.has(o.txid.trim().toLowerCase()) && (
                         <p className="text-[11px] font-semibold text-red-400">Same TXID used on another order!</p>
                       )}
-                      {isChainTxid(o.txid) && (
-                        <a
-                          href={`https://bscscan.com/tx/${o.txid.trim()}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300"
-                        >
-                          Check on BscScan <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
+                      {(() => {
+                        const ex = explorerFor(o.txid);
+                        return ex ? (
+                          <a
+                            href={ex.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300"
+                          >
+                            {ex.label} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : null;
+                      })()}
                     </div>
                   ) : (
                     <span className="text-xs text-slate-500">No TXID yet</span>

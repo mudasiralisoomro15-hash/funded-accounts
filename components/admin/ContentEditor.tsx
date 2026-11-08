@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
-import { FAQ_CATEGORIES, type FaqItem, type SiteConfig } from "@/lib/siteConfig";
+import { FAQ_CATEGORIES, addressProblem, type FaqItem, type PaymentMethod, type SiteConfig } from "@/lib/siteConfig";
 import { Field, Panel, Toggle, inputCls } from "./ui";
 
 interface ContentEditorProps {
@@ -13,6 +13,22 @@ export default function ContentEditor({ config, onChange }: ContentEditorProps) 
   const setHero = (p: Partial<SiteConfig["hero"]>) => onChange({ ...config, hero: { ...config.hero, ...p } });
   const setAnn = (p: Partial<SiteConfig["announcement"]>) =>
     onChange({ ...config, announcement: { ...config.announcement, ...p } });
+
+  const setPay = (p: Partial<SiteConfig["payment"]>) =>
+    onChange({ ...config, payment: { ...config.payment, ...p } });
+  const editMethod = (id: string, p: Partial<PaymentMethod>) =>
+    setPay({ methods: config.payment.methods.map((m) => (m.id === id ? { ...m, ...p } : m)) });
+  const addMethod = () =>
+    setPay({
+      methods: [
+        ...config.payment.methods,
+        { id: `m_${Date.now()}`, name: "TRC20 USDT", coin: "USDT", network: "TRC20", address: "", enabled: true },
+      ],
+    });
+  const removeMethod = (id: string, name: string) => {
+    if (!window.confirm(`Remove “${name}”? Customers will no longer see it.`)) return;
+    setPay({ methods: config.payment.methods.filter((m) => m.id !== id) });
+  };
 
   const setFaqs = (faqs: FaqItem[]) => onChange({ ...config, faqs });
   const editFaq = (i: number, p: Partial<FaqItem>) =>
@@ -60,44 +76,72 @@ export default function ContentEditor({ config, onChange }: ContentEditorProps) 
       </Panel>
 
       <Panel
-        title="Payment (crypto)"
-        subtitle="Shown to the customer after they press Buy. Check the money yourself, then Approve in Orders."
+        title="Payment methods"
+        subtitle="What the customer sees after pressing Buy. Add a method for every network you accept (BEP20, TRC20…). Press Save at the bottom after any change."
+        action={
+          <button
+            type="button"
+            onClick={addMethod}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/20"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add payment method
+          </button>
+        }
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Coin">
+        <div className="space-y-4">
+          {config.payment.methods.length === 0 && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300">
+              No payment method. Customers will see “Payment is not available”. Add one.
+            </p>
+          )}
+          {config.payment.methods.map((m) => {
+            const problem = m.address.trim() ? addressProblem(m) : null;
+            return (
+              <div key={m.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Toggle checked={m.enabled} onChange={(v) => editMethod(m.id, { enabled: v })} label={m.enabled ? "Shown to customers" : "Hidden"} />
+                  <button
+                    type="button"
+                    onClick={() => removeMethod(m.id, m.name)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-2.5 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <Field label="Name customers see" hint="Example: BEP20 USDT">
+                    <input className={inputCls} value={m.name} onChange={(e) => editMethod(m.id, { name: e.target.value })} />
+                  </Field>
+                  <Field label="Coin" hint="Example: USDT">
+                    <input className={inputCls} value={m.coin} onChange={(e) => editMethod(m.id, { coin: e.target.value })} />
+                  </Field>
+                  <Field label="Network" hint="Example: BEP20 or TRC20">
+                    <input className={inputCls} value={m.network} onChange={(e) => editMethod(m.id, { network: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="mt-3">
+                  <Field label="Your wallet address">
+                    <input
+                      className={`${inputCls} font-mono`}
+                      value={m.address}
+                      placeholder="Paste your deposit address"
+                      spellCheck={false}
+                      onChange={(e) => editMethod(m.id, { address: e.target.value.trim() })}
+                    />
+                  </Field>
+                  {!m.address.trim() && <p className="mt-1 text-[11px] text-amber-400">No address yet: this method is hidden from customers until you add one.</p>}
+                  {problem && <p className="mt-1 text-[11px] text-red-400">{problem} Double-check before saving.</p>}
+                </div>
+              </div>
+            );
+          })}
+          <Field label="Extra note under the steps (optional)">
             <input
               className={inputCls}
-              value={config.payment.coin}
-              onChange={(e) => onChange({ ...config, payment: { ...config.payment, coin: e.target.value } })}
+              value={config.payment.note}
+              onChange={(e) => setPay({ note: e.target.value })}
             />
           </Field>
-          <Field label="Network" hint="Must match the deposit network of your address. Example: BNB Smart Chain (BEP20).">
-            <input
-              className={inputCls}
-              value={config.payment.network}
-              onChange={(e) => onChange({ ...config, payment: { ...config.payment, network: e.target.value } })}
-            />
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Your wallet address" hint="Binance: Wallet → Deposit → USDT → network BNB Smart Chain (BEP20) → copy the address (starts with 0x). Double-check it, then press Save.">
-              <input
-                className={`${inputCls} font-mono`}
-                value={config.payment.address}
-                placeholder="0x…"
-                spellCheck={false}
-                onChange={(e) => onChange({ ...config, payment: { ...config.payment, address: e.target.value.trim() } })}
-              />
-            </Field>
-          </div>
-          <div className="sm:col-span-2">
-            <Field label="Note under the address (optional)">
-              <input
-                className={inputCls}
-                value={config.payment.note}
-                onChange={(e) => onChange({ ...config, payment: { ...config.payment, note: e.target.value } })}
-              />
-            </Field>
-          </div>
         </div>
       </Panel>
 

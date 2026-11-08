@@ -9,22 +9,72 @@ export interface FaqItem {
   cat?: string;
 }
 
-/** Where customers send the money (crypto, checked by hand in the admin panel). */
-export interface PaymentSettings {
+/** One way to pay (for example "BEP20 USDT"). The admin can add, edit, hide or remove methods. */
+export interface PaymentMethod {
+  id: string;
+  /** Shown on the button the customer taps, e.g. "BEP20 USDT". */
+  name: string;
   coin: string;
+  /** Short network name, e.g. "BEP20" or "TRC20". */
   network: string;
-  /** Your wallet / exchange deposit address. Empty = checkout shows "not set yet". */
+  /** Your wallet / exchange deposit address for this network. */
   address: string;
-  /** Extra line shown under the address (optional). */
+  enabled: boolean;
+}
+
+export interface PaymentSettings {
+  methods: PaymentMethod[];
+  /** Optional extra line shown under the steps. */
   note: string;
 }
 
 export const DEFAULT_PAYMENT: PaymentSettings = {
-  coin: "USDT",
-  network: "BNB Smart Chain (BEP20)",
-  address: "",
-  note: "Send the exact amount. After paying, paste your transaction ID (TXID) and press Confirm.",
+  methods: [
+    {
+      id: "bep20-usdt",
+      name: "BEP20 USDT",
+      coin: "USDT",
+      network: "BEP20",
+      address: "0x93ad7078e65a9e72badc7e9650009e39144e9981",
+      enabled: true,
+    },
+  ],
+  note: "",
 };
+
+/** A gentle check that an address looks right for its network (null = looks fine). */
+export function addressProblem(m: { network: string; address: string }): string | null {
+  const a = m.address.trim();
+  if (!a) return "Address is empty.";
+  const n = m.network.toUpperCase();
+  if (/BEP20|BSC|ERC20|ETH|POLYGON|ARB|OP/.test(n) && !/^0x[a-fA-F0-9]{40}$/.test(a)) {
+    return "A BEP20 / ERC20 address starts with 0x and is 42 characters long.";
+  }
+  if (/TRC20|TRON/.test(n) && !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a)) {
+    return "A TRC20 address starts with T and is 34 characters long.";
+  }
+  return null;
+}
+
+function mergePayment(saved: unknown): PaymentSettings {
+  const base = cloneConfig(DEFAULT_PAYMENT);
+  if (!saved || typeof saved !== "object") return base;
+  const s = saved as { methods?: unknown; note?: unknown; address?: unknown };
+  if (Array.isArray(s.methods)) {
+    const methods = (s.methods as Partial<PaymentMethod>[]).map((m, i) => ({
+      id: m.id || `method-${i}`,
+      name: m.name?.trim() || "USDT",
+      coin: m.coin?.trim() || "USDT",
+      network: m.network?.trim() || "",
+      address: (m.address ?? "").trim(),
+      enabled: m.enabled !== false,
+    }));
+    return { methods, note: typeof s.note === "string" ? s.note : base.note };
+  }
+  // Older single-address format.
+  if (typeof s.address === "string" && s.address.trim()) base.methods[0].address = s.address.trim();
+  return base;
+}
 
 export const FAQ_CATEGORIES = ["Challenge", "Payouts", "Trading Rules", "General"];
 
@@ -146,7 +196,7 @@ export function mergeConfig(saved: Partial<SiteConfig> | null | undefined): Site
     models,
     bestValueSize: typeof saved.bestValueSize === "number" ? saved.bestValueSize : base.bestValueSize,
     referralPct: typeof saved.referralPct === "number" ? saved.referralPct : base.referralPct,
-    payment: { ...base.payment, ...(saved.payment ?? {}) },
+    payment: mergePayment(saved.payment),
     faqs: Array.isArray(saved.faqs) ? saved.faqs : base.faqs,
   };
 }
