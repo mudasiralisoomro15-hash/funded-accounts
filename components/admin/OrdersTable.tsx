@@ -81,14 +81,16 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
     onDecline(o.id, reason.trim() || DEFAULT_DECLINE);
   }
 
+  // Unpaid orders (customer has not sent a TXID) are not requests yet: hidden unless you pick "pending".
+  const requests = useMemo(() => orders.filter((o) => o.status !== "pending"), [orders]);
   const filtered = useMemo(
-    () => (filter === "all" ? orders : orders.filter((o) => o.status === filter)),
-    [orders, filter]
+    () => (filter === "all" ? requests : orders.filter((o) => o.status === filter)),
+    [orders, requests, filter]
   );
 
   return (
     <Panel
-      title={`Orders (${orders.length})`}
+      title={`Orders (${requests.length})`}
       subtitle="Customers send USDT and their TXID. Check the money in your wallet, then press Approve (or Decline), then add the MT5 login."
       action={
         <select
@@ -97,7 +99,7 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
           value={filter}
           onChange={(e) => setFilter(e.target.value as OrderStatus | "all")}
         >
-          <option value="all">All statuses</option>
+          <option value="all">All (paid & to review)</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -218,7 +220,7 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                  {orders.length === 0 ? "No orders yet." : "No orders with this status."}
+                  {requests.length === 0 && filter === "all" ? "No orders yet." : "No orders with this status."}
                 </td>
               </tr>
             )}

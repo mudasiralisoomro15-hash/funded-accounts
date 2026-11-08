@@ -23,6 +23,11 @@ interface PaymentPanelProps {
   variant: "modal" | "dash";
   /** Called after the TXID was saved, with the updated order fields. */
   onSubmitted?: (patch: Partial<OrderRecord>) => void;
+  /**
+   * Checkout popup: the order does not exist yet, so this creates it and sends the TXID.
+   * Without it the TXID is saved on the existing order.
+   */
+  onSubmitTxid?: (txid: string) => Promise<void>;
 }
 
 function StepNo({ n, dash }: { n: number; dash: boolean }) {
@@ -37,7 +42,7 @@ function StepNo({ n, dash }: { n: number; dash: boolean }) {
   );
 }
 
-export default function PaymentPanel({ order, variant, onSubmitted }: PaymentPanelProps) {
+export default function PaymentPanel({ order, variant, onSubmitted, onSubmitTxid }: PaymentPanelProps) {
   const { config } = useSiteConfig();
   const methods = config.payment.methods.filter((m) => m.enabled && m.address.trim());
   const [methodId, setMethodId] = useState<string | null>(null);
@@ -82,7 +87,8 @@ export default function PaymentPanel({ order, variant, onSubmitted }: PaymentPan
     setError(null);
     setBusy(true);
     try {
-      await submitOrderPayment(order.id, value);
+      if (onSubmitTxid) await onSubmitTxid(value);
+      else await submitOrderPayment(order.id, value);
       onSubmitted?.({ status: "review", txid: value, txSubmittedAt: new Date().toISOString(), declineReason: "" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send your payment details. Try again.");

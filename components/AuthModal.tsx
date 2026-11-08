@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent, InputHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -28,7 +28,7 @@ import {
   signUpWithEmail,
   type AuthResult,
 } from "@/lib/auth";
-import { createOrder, getCoupon } from "@/lib/db";
+import { createOrder, getCoupon, submitOrderPayment } from "@/lib/db";
 import { formatSize, formatUSD, getModel, type PlanSelection } from "@/lib/plans";
 import type { AppUser, OrderRecord } from "@/lib/types";
 
@@ -78,8 +78,10 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
   const [coupon, setCoupon] = useState<{ code: string; percent: number } | null>(null);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ title: string; text: string } | null>(null);
-  // The saved order while the customer is on the "pay now" step.
-  const [paying, setPaying] = useState<OrderRecord | null>(null);
+  // Set while the customer is on the "pay now" step. The order itself is only
+  // saved when they press "I have paid, confirm" with a TXID.
+  const [payUser, setPayUser] = useState<AppUser | null>(null);
+  const createdId = useRef<string | null>(null);
 
   // Lock page scroll + close on Escape while the modal is open.
   useEffect(() => {
@@ -111,7 +113,8 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     setError(null);
     setInfo(null);
     setSuccess(null);
-    setPaying(null);
+    setPayUser(null);
+    createdId.current = null;
     setCoupon(null);
     setCouponInput("");
     setCouponMsg(null);
@@ -160,7 +163,22 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     }
   }
   // Already logged in and buying -> skip the form and just confirm the order.
-  const confirmOnly = !!user && !!order && !success && !paying && loading === null;
+  const confirmOnly = !!user && !!order && !success && !payUser && loading === null;
+  const draft: OrderRecord | null =
+    payUser && order && model
+      ? {
+          id: "draft",
+          userId: payUser.uid,
+          email: payUser.email,
+          name: payUser.name,
+          modelId: order.modelId,
+          modelName: model.name,
+          size: order.size,
+          price: finalPrice,
+          status: "pending",
+          createdAt: "",
+        }
+      : null;
 
   function validate(): string | null {
     if (isSignup && name.trim().length < 2) return "Please enter your full name.";
@@ -196,7 +214,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
       return;
     }
     if (order && model) {
-      setPaying(await placeOrder(res.user));
+      setPayUser(res.user);
       return;
     }
     // Plain sign in / sign up: close the popup and go straight to the dashboard
@@ -242,17 +260,22 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     }
   }
 
-  async function handleConfirmOrder() {
+  /** "Continue to payment": nothing is saved yet. */
+  function handleConfirmOrder() {
     if (!user) return;
     setError(null);
-    setLoading("order");
-    try {
-      setPaying(await placeOrder(user));
-    } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setLoading(null);
+    setPayUser(user);
+  }
+
+  /** Creates the order (once) and sends the TXID. Only now does the admin get a request. */
+  async function confirmPayment(txid: string) {
+    if (!payUser) return;
+    if (!createdId.current) {
+      const rec = await placeOrder(payUser);
+      if (!rec) throw new Error("Could not create your order. Please try again.");
+      createdId.current = rec.id;
     }
+    await submitOrderPayment(createdId.current, txid);
   }
 
   const selectionBox =
@@ -346,24 +369,32 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
                 Close
               </button>
             </div>
-          ) : paying ? (
+          ) : draft ? (
             <>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Step 2 · Payment
-              </span>
+              <div className="flex items-center justify-between pr-11">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Step 2 · Payment
+                </span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
               <h2 id="auth-title" className="mt-3 font-display text-2xl font-bold text-white">
                 Complete your payment
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
-                {orderSummary()}. Your order is saved. Just follow these simple steps.
-              </p>
+              <p className="mt-1 text-sm text-slate-400">{orderSummary()}. Follow these simple steps.</p>
               <div className="mt-5">
                 <PaymentPanel
-                  order={paying}
+                  order={draft}
                   variant="modal"
+                  onSubmitTxid={confirmPayment}
                   onSubmitted={() => {
-                    setPaying(null);
+                    setPayUser(null);
                     setSuccess({
                       title: "Payment submitted",
                       text: `${orderSummary()}: we are checking your payment. Your MT5 login will appear in your dashboard once it is confirmed.`,
@@ -371,13 +402,6 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
                   }}
                 />
               </div>
-              <Link
-                href="/dashboard"
-                onClick={onClose}
-                className="mt-4 block w-full text-center text-xs text-slate-500 transition hover:text-slate-300"
-              >
-                I will pay later, go to Dashboard
-              </Link>
             </>
           ) : confirmOnly && user ? (
             <>
@@ -395,7 +419,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
               <div className="mt-5 space-y-4">
                 {errorBox}
                 <button type="button" onClick={handleConfirmOrder} className="btn-glow w-full">
-                  Confirm Order
+                  Continue to payment
                 </button>
                 <button
                   type="button"

@@ -502,6 +502,8 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
 
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
 
+  // Orders still waiting for the customer to pay are not shown as requests.
+  const requested = orders.filter((o) => o.status !== "pending");
   const pending = orders.filter((o) => o.status === "review").length;
   const revenue = orders
     .filter((o) => o.status === "paid" || o.status === "active")
@@ -543,7 +545,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { label: "Total users", value: String(users.length) },
-                { label: "Total orders", value: String(orders.length) },
+                { label: "Total orders", value: String(requested.length) },
                 { label: "Payments to review", value: String(pending) },
                 { label: "Confirmed revenue", value: formatUSD(revenue) },
                 { label: "Active accounts", value: String(orders.filter((o) => o.status === "active").length) },
@@ -559,11 +561,11 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
             </div>
 
             <Panel title="Recent orders">
-              {orders.length === 0 ? (
+              {requested.length === 0 ? (
                 <p className="text-sm text-slate-500">No orders yet.</p>
               ) : (
                 <ul className="divide-y divide-white/5">
-                  {orders.slice(0, 6).map((o) => (
+                  {requested.slice(0, 6).map((o) => (
                     <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <div>
                         <p className="text-sm font-medium text-white">{o.name}</p>
