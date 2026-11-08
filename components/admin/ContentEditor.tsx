@@ -59,6 +59,48 @@ export default function ContentEditor({ config, onChange }: ContentEditorProps) 
         </div>
       </Panel>
 
+      <Panel
+        title="Payment (crypto)"
+        subtitle="Shown to the customer after they press Buy. Check the money yourself, then Approve in Orders."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Coin">
+            <input
+              className={inputCls}
+              value={config.payment.coin}
+              onChange={(e) => onChange({ ...config, payment: { ...config.payment, coin: e.target.value } })}
+            />
+          </Field>
+          <Field label="Network" hint="Must match the deposit network of your address. Example: BNB Smart Chain (BEP20).">
+            <input
+              className={inputCls}
+              value={config.payment.network}
+              onChange={(e) => onChange({ ...config, payment: { ...config.payment, network: e.target.value } })}
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Your wallet address" hint="Binance: Wallet → Deposit → USDT → network BNB Smart Chain (BEP20) → copy the address (starts with 0x). Double-check it, then press Save.">
+              <input
+                className={`${inputCls} font-mono`}
+                value={config.payment.address}
+                placeholder="0x…"
+                spellCheck={false}
+                onChange={(e) => onChange({ ...config, payment: { ...config.payment, address: e.target.value.trim() } })}
+              />
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Note under the address (optional)">
+              <input
+                className={inputCls}
+                value={config.payment.note}
+                onChange={(e) => onChange({ ...config, payment: { ...config.payment, note: e.target.value } })}
+              />
+            </Field>
+          </div>
+        </div>
+      </Panel>
+
       <Panel title="Top announcement bar" subtitle="A coloured strip above the navbar. Good for offers.">
         <div className="space-y-4">
           <Toggle

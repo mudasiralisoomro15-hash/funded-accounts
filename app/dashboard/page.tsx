@@ -11,17 +11,18 @@ import { formatSize, formatUSD } from "@/lib/plans";
 
 export default function OverviewPage() {
   const { user } = useAuth();
-  const { orders, error } = useMyOrders();
+  const { orders, error, patchOrder } = useMyOrders();
 
   const list = orders ?? [];
   const active = list.filter((o) => o.status === "active");
   const accounts = list.filter((o) => o.status !== "cancelled");
-  const pending = list.filter((o) => o.status === "pending").length;
+  const pending = list.filter((o) => o.status === "pending" || o.status === "review").length;
+  const declined = list.filter((o) => o.status === "declined");
   const invested = list.filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.price, 0);
 
   const stats = [
     { label: "Total orders", value: String(list.length) },
-    { label: "Pending", value: String(pending) },
+    { label: "Awaiting payment", value: String(pending) },
     { label: "Active accounts", value: String(active.length) },
     { label: "Total invested", value: formatUSD(invested) },
   ];
@@ -47,6 +48,15 @@ export default function OverviewPage() {
         ))}
       </div>
 
+      {declined.map((o) => (
+        <p key={o.id} className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          <span className="font-semibold">
+            Payment declined for {o.modelName} ({formatSize(o.size)}):
+          </span>{" "}
+          {o.declineReason?.trim() || "We have not received your payment."} Please pay and submit the correct TXID on the account card below.
+        </p>
+      ))}
+
       {error && (
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
           {error}
@@ -71,7 +81,7 @@ export default function OverviewPage() {
         ) : (
           <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
             {accounts.map((o) => (
-              <AccountCard key={o.id} order={o} />
+              <AccountCard key={o.id} order={o} onChange={(patch) => patchOrder(o.id, patch)} />
             ))}
           </div>
         )}

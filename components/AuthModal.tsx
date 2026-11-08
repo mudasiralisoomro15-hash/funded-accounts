@@ -20,6 +20,7 @@ import {
 import { GoogleIcon } from "./icons";
 import { useAuth } from "./AuthProvider";
 import { useSiteConfig } from "./SiteConfigProvider";
+import PaymentPanel from "./PaymentPanel";
 import {
   signInWithEmail,
   signInWithGoogle,
@@ -28,9 +29,8 @@ import {
   type AuthResult,
 } from "@/lib/auth";
 import { createOrder, getCoupon } from "@/lib/db";
-import { createCheckoutSession } from "@/lib/payments";
 import { formatSize, formatUSD, getModel, type PlanSelection } from "@/lib/plans";
-import type { AppUser } from "@/lib/types";
+import type { AppUser, OrderRecord } from "@/lib/types";
 
 export type AuthMode = "signin" | "signup";
 
@@ -78,6 +78,8 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
   const [coupon, setCoupon] = useState<{ code: string; percent: number } | null>(null);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ title: string; text: string } | null>(null);
+  // The saved order while the customer is on the "pay now" step.
+  const [paying, setPaying] = useState<OrderRecord | null>(null);
 
   // Lock page scroll + close on Escape while the modal is open.
   useEffect(() => {
@@ -100,7 +102,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     const t = setTimeout(() => {
       onClose();
       router.push("/dashboard");
-    }, 2200);
+    }, 3200);
     return () => clearTimeout(t);
   }, [success, order, onClose, router]);
 
@@ -109,6 +111,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     setError(null);
     setInfo(null);
     setSuccess(null);
+    setPaying(null);
     setCoupon(null);
     setCouponInput("");
     setCouponMsg(null);
@@ -157,7 +160,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     }
   }
   // Already logged in and buying -> skip the form and just confirm the order.
-  const confirmOnly = !!user && !!order && !success && loading === null;
+  const confirmOnly = !!user && !!order && !success && !paying && loading === null;
 
   function validate(): string | null {
     if (isSignup && name.trim().length < 2) return "Please enter your full name.";
@@ -166,10 +169,10 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     return null;
   }
 
-  /** Saves the order in the database. Returns the payment-step message. */
-  async function placeOrder(u: AppUser): Promise<string> {
-    if (!order || !model) return "";
-    await createOrder({
+  /** Saves the order in the database and returns it (the next step is paying). */
+  async function placeOrder(u: AppUser): Promise<OrderRecord | null> {
+    if (!order || !model) return null;
+    return createOrder({
       userId: u.uid,
       email: u.email,
       name: u.name,
@@ -179,8 +182,6 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
       price: finalPrice,
       ...(coupon ? { coupon: coupon.code } : {}),
     });
-    const checkout = await createCheckoutSession({ ...order, price: finalPrice }, u.email);
-    return checkout.message;
   }
 
   function orderSummary(): string {
@@ -195,11 +196,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
       return;
     }
     if (order && model) {
-      const paymentMsg = await placeOrder(res.user);
-      setSuccess({
-        title: "Order request received",
-        text: `${orderSummary()} has been saved to your account. ${paymentMsg}`,
-      });
+      setPaying(await placeOrder(res.user));
       return;
     }
     // Plain sign in / sign up: close the popup and go straight to the dashboard
@@ -250,11 +247,7 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
     setError(null);
     setLoading("order");
     try {
-      const paymentMsg = await placeOrder(user);
-      setSuccess({
-        title: "Order request received",
-        text: `${orderSummary()} has been saved to your account. ${paymentMsg}`,
-      });
+      setPaying(await placeOrder(user));
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -353,6 +346,39 @@ export default function AuthModal({ open, mode, order, onClose, onModeChange }: 
                 Close
               </button>
             </div>
+          ) : paying ? (
+            <>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Step 2 · Payment
+              </span>
+              <h2 id="auth-title" className="mt-3 font-display text-2xl font-bold text-white">
+                Complete your payment
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {orderSummary()}. Your order is saved. Pay, then paste the transaction ID below.
+              </p>
+              <div className="mt-5">
+                <PaymentPanel
+                  order={paying}
+                  variant="modal"
+                  onSubmitted={() => {
+                    setPaying(null);
+                    setSuccess({
+                      title: "Payment submitted",
+                      text: `${orderSummary()}: we are checking your payment. Your MT5 login will appear in your dashboard once it is confirmed.`,
+                    });
+                  }}
+                />
+              </div>
+              <Link
+                href="/dashboard"
+                onClick={onClose}
+                className="mt-4 block w-full text-center text-xs text-slate-500 transition hover:text-slate-300"
+              >
+                I will pay later, go to Dashboard
+              </Link>
+            </>
           ) : confirmOnly && user ? (
             <>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300">

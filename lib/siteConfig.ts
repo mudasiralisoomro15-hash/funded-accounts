@@ -9,6 +9,23 @@ export interface FaqItem {
   cat?: string;
 }
 
+/** Where customers send the money (crypto, checked by hand in the admin panel). */
+export interface PaymentSettings {
+  coin: string;
+  network: string;
+  /** Your wallet / exchange deposit address. Empty = checkout shows "not set yet". */
+  address: string;
+  /** Extra line shown under the address (optional). */
+  note: string;
+}
+
+export const DEFAULT_PAYMENT: PaymentSettings = {
+  coin: "USDT",
+  network: "BNB Smart Chain (BEP20)",
+  address: "",
+  note: "Send the exact amount. After paying, paste your transaction ID (TXID) and press Confirm.",
+};
+
 export const FAQ_CATEGORIES = ["Challenge", "Payouts", "Trading Rules", "General"];
 
 export interface SiteConfig {
@@ -26,6 +43,7 @@ export interface SiteConfig {
   bestValueSize: number;
   /** Commission (%) a referrer earns on every paid order of a referred trader. */
   referralPct: number;
+  payment: PaymentSettings;
   faqs: FaqItem[];
 }
 
@@ -93,6 +111,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   models: DEFAULT_MODELS,
   bestValueSize: 50000,
   referralPct: 15,
+  payment: DEFAULT_PAYMENT,
   faqs: DEFAULT_FAQS,
 };
 
@@ -127,6 +146,7 @@ export function mergeConfig(saved: Partial<SiteConfig> | null | undefined): Site
     models,
     bestValueSize: typeof saved.bestValueSize === "number" ? saved.bestValueSize : base.bestValueSize,
     referralPct: typeof saved.referralPct === "number" ? saved.referralPct : base.referralPct,
+    payment: { ...base.payment, ...(saved.payment ?? {}) },
     faqs: Array.isArray(saved.faqs) ? saved.faqs : base.faqs,
   };
 }

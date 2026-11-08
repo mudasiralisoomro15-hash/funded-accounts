@@ -59,6 +59,7 @@ import {
   updateKycStatus,
   updateOrderCredentials,
   updateOrderStatus,
+  declineOrderPayment,
   updatePayoutStatus,
 } from "@/lib/db";
 import { diffConfig } from "@/lib/configDiff";
@@ -412,10 +413,28 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
     }
   }
 
+  async function handleDecline(id: string, reason: string) {
+    if (blocked()) return;
+    const previous = orders;
+    const patch = { status: "declined" as OrderStatus, declineReason: reason, declinedAt: new Date().toISOString() };
+    setOrders((list) => list.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+    try {
+      await declineOrderPayment(id, reason);
+    } catch (e) {
+      setOrders(previous);
+      setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not decline the payment." });
+    }
+  }
+
   async function handleCredentials(id: string, credentials: OrderCredentials) {
     if (needsApproval) throw new Error("Not allowed");
     await updateOrderCredentials(id, credentials);
-    setOrders((list) => list.map((o) => (o.id === id ? { ...o, credentials } : o)));
+    // Delivering the login on an approved order makes it Active.
+    const deliver = orders.find((o) => o.id === id)?.status === "paid";
+    if (deliver) await updateOrderStatus(id, "active");
+    setOrders((list) =>
+      list.map((o) => (o.id === id ? { ...o, credentials, ...(deliver ? { status: "active" as OrderStatus } : {}) } : o))
+    );
   }
 
   async function handleCouponSave(c: Coupon) {
@@ -483,7 +502,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
 
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
 
-  const pending = orders.filter((o) => o.status === "pending").length;
+  const pending = orders.filter((o) => o.status === "review").length;
   const revenue = orders
     .filter((o) => o.status === "paid" || o.status === "active")
     .reduce((sum, o) => sum + o.price, 0);
@@ -525,7 +544,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
               {[
                 { label: "Total users", value: String(users.length) },
                 { label: "Total orders", value: String(orders.length) },
-                { label: "Pending orders", value: String(pending) },
+                { label: "Payments to review", value: String(pending) },
                 { label: "Confirmed revenue", value: formatUSD(revenue) },
                 { label: "Active accounts", value: String(orders.filter((o) => o.status === "active").length) },
                 { label: "Pending payouts", value: String(payouts.filter((p) => p.status === "pending").length) },
@@ -603,7 +622,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
         {tab === "content" && <ContentEditor config={draft} onChange={setDraft} />}
         {tab === "users" && <UsersTable users={users} />}
         {tab === "orders" && (
-          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} />
+          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} onDecline={handleDecline} />
         )}
         {tab === "coupons" && (
           <CouponsManager coupons={coupons} onSave={handleCouponSave} onDelete={handleCouponDelete} />

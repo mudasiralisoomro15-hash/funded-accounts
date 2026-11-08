@@ -47,9 +47,20 @@ export function EmptyState({
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending: "bg-amber-500/15 text-amber-600",
+  review: "bg-violet-500/15 text-violet-500",
   paid: "bg-sky-500/15 text-sky-600",
   active: "bg-emerald-500/15 text-emerald-600",
+  declined: "bg-red-500/15 text-red-600",
   cancelled: "bg-red-500/15 text-red-600",
+};
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: "Awaiting payment",
+  review: "Under review",
+  paid: "Paid",
+  active: "Active",
+  declined: "Declined",
+  cancelled: "Cancelled",
 };
 
 export function DashStatus({ status }: { status: OrderStatus }) {
@@ -59,7 +70,7 @@ export function DashStatus({ status }: { status: OrderStatus }) {
         STATUS_STYLES[status] ?? STATUS_STYLES.pending
       }`}
     >
-      {status}
+      {STATUS_LABELS[status] ?? status}
     </span>
   );
 }

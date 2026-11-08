@@ -200,6 +200,37 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
   await updateDoc(doc(getDb(), "orders", id), { status });
 }
 
+/** Customer: sends the payment TXID. Moves the order to "review". */
+export async function submitOrderPayment(id: string, txid: string): Promise<void> {
+  const patch = {
+    status: "review" as OrderStatus,
+    txid: txid.trim(),
+    txSubmittedAt: new Date().toISOString(),
+    declineReason: "",
+  };
+  if (!isFirebaseConfigured) {
+    const orders = lsGet<OrderRecord[]>(KEYS.orders, []).map((o) => (o.id === id ? { ...o, ...patch } : o));
+    lsSet(KEYS.orders, orders);
+    return;
+  }
+  await updateDoc(doc(getDb(), "orders", id), patch);
+}
+
+/** Admin: payment not received. The customer sees the reason and can pay again. */
+export async function declineOrderPayment(id: string, reason: string): Promise<void> {
+  const patch = {
+    status: "declined" as OrderStatus,
+    declineReason: reason.trim(),
+    declinedAt: new Date().toISOString(),
+  };
+  if (!isFirebaseConfigured) {
+    const orders = lsGet<OrderRecord[]>(KEYS.orders, []).map((o) => (o.id === id ? { ...o, ...patch } : o));
+    lsSet(KEYS.orders, orders);
+    return;
+  }
+  await updateDoc(doc(getDb(), "orders", id), patch);
+}
+
 export async function updateOrderCredentials(id: string, credentials: OrderCredentials): Promise<void> {
   if (!isFirebaseConfigured) {
     const orders = lsGet<OrderRecord[]>(KEYS.orders, []).map((o) =>

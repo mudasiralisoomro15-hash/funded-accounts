@@ -1,4 +1,12 @@
-export type OrderStatus = "pending" | "paid" | "active" | "cancelled";
+/**
+ * pending   = waiting for the customer to pay and send the TXID
+ * review    = TXID submitted, admin is checking the wallet
+ * paid      = payment approved, account not delivered yet
+ * active    = MT5 login delivered
+ * declined  = admin did not receive the payment (customer can submit again)
+ * cancelled = closed by admin
+ */
+export type OrderStatus = "pending" | "review" | "paid" | "active" | "declined" | "cancelled";
 
 /** The signed-in user as the UI sees it. */
 export interface AppUser {
@@ -31,6 +39,12 @@ export interface OrderRecord {
   status: OrderStatus;
   createdAt: string;
   coupon?: string;
+  /** Blockchain transaction id the customer typed after paying. */
+  txid?: string;
+  txSubmittedAt?: string;
+  /** Shown to the customer when the payment was declined. */
+  declineReason?: string;
+  declinedAt?: string;
   /** MT5 login handed over by the admin when the account is delivered. */
   credentials?: OrderCredentials;
 }
@@ -41,7 +55,10 @@ export interface OrderCredentials {
   server: string;
 }
 
-export type NewOrder = Omit<OrderRecord, "id" | "status" | "createdAt" | "credentials">;
+export type NewOrder = Omit<
+  OrderRecord,
+  "id" | "status" | "createdAt" | "credentials" | "txid" | "txSubmittedAt" | "declineReason" | "declinedAt"
+>;
 
 export interface Coupon {
   code: string;
