@@ -16,22 +16,6 @@ export default function BillingPage() {
     <>
       <PageHeader title="Billing" subtitle="Your purchases and payment status." />
 
-      {orders && (
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            { label: "Total orders", value: String(orders.filter((o) => o.status !== "cancelled").length) },
-            { label: "Awaiting payment", value: String(orders.filter((o) => o.status === "pending" || o.status === "review").length) },
-            { label: "Active accounts", value: String(orders.filter((o) => o.status === "active").length) },
-            { label: "Total invested", value: formatUSD(orders.filter((o) => o.status === "paid" || o.status === "active").reduce((s, o) => s + o.price, 0)) },
-          ].map((s) => (
-            <div key={s.label} className="dash-card p-4">
-              <p className="dash-sub text-xs font-medium">{s.label}</p>
-              <p className="dash-text mt-1.5 text-2xl font-bold">{s.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
       {error && (
         <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
           {error}

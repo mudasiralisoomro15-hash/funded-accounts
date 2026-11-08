@@ -130,7 +130,7 @@ function ShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const [drawer, setDrawer] = useState(false);
-  // Desktop sidebar: open by default, the user can close it (remembered in this browser).
+  // Desktop sidebar: always open on load; the user can close it with the button.
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menu, setMenu] = useState(false);
   const [banner, setBanner] = useState(true);
@@ -138,29 +138,23 @@ function ShellInner({ children }: { children: ReactNode }) {
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const closeAuth = useCallback(() => setAuthOpen(false), []);
 
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("fx_sidebar") === "closed") setSidebarOpen(false);
-    } catch {
-      /* storage blocked: stay open */
-    }
-  }, []);
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarOpen((v) => {
-      try {
-        localStorage.setItem("fx_sidebar", v ? "closed" : "open");
-      } catch {
-        /* ignore */
-      }
-      return !v;
-    });
-  }, []);
+  // Closing the sidebar lasts only until the page is reloaded: it is always open when the dashboard opens.
+  const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
 
   useEffect(() => {
     setDrawer(false);
     setMenu(false);
   }, [pathname]);
+
+  // On a phone the sidebar is a slide-in panel: show it when the dashboard opens.
+  useEffect(() => {
+    try {
+      localStorage.removeItem("fx_sidebar");
+    } catch {
+      /* ignore */
+    }
+    if (window.innerWidth < 1024) setDrawer(true);
+  }, []);
 
   const root = `dash-root ${theme === "dark" ? "dash-dark" : "dash-light"}`;
 
