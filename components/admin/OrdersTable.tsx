@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Check, ExternalLink, KeyRound, X } from "lucide-react";
+import { Check, ExternalLink, KeyRound, Trash2, X } from "lucide-react";
 import { formatSize, formatUSD } from "@/lib/plans";
 import type { OrderCredentials, OrderRecord, OrderStatus } from "@/lib/types";
 import { Field, Panel, formatDate, inputCls } from "./ui";
@@ -17,6 +17,7 @@ interface OrdersTableProps {
   onStatusChange: (id: string, status: OrderStatus) => void;
   onCredentials: (id: string, creds: OrderCredentials) => Promise<void>;
   onDecline: (id: string, reason: string) => void;
+  onDelete: (ids: string[]) => Promise<void>;
 }
 
 function CredentialsForm({
@@ -58,9 +59,11 @@ function CredentialsForm({
   );
 }
 
-export default function OrdersTable({ orders, onStatusChange, onCredentials, onDecline }: OrdersTableProps) {
+export default function OrdersTable({ orders, onStatusChange, onCredentials, onDecline, onDelete }: OrdersTableProps) {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [open, setOpen] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   // A TXID used on more than one order is suspicious (the same payment claimed twice).
   const dupTx = useMemo(() => {
@@ -88,6 +91,33 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
     [orders, requests, filter]
   );
 
+  const chosen = filtered.filter((o) => selected.has(o.id));
+  const allChosen = filtered.length > 0 && chosen.length === filtered.length;
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function deleteChosen() {
+    const ids = chosen.map((o) => o.id);
+    if (ids.length === 0) return;
+    const confirmed = chosen.some((o) => o.status === "paid" || o.status === "active" || o.status === "review");
+    const msg =
+      `Delete ${ids.length} selected order${ids.length === 1 ? "" : "s"} permanently?\n\n` +
+      (confirmed ? "Some of them are paid, active or under review. Deleting removes them from your revenue and from the customer's dashboard.\n\n" : "") +
+      "This cannot be undone.";
+    if (!window.confirm(msg)) return;
+    setDeleting(true);
+    await onDelete(ids);
+    setSelected(new Set());
+    setDeleting(false);
+  }
+
   return (
     <Panel
       title={`Orders (${requests.length})`}
@@ -108,10 +138,41 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
         </select>
       }
     >
+      {chosen.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+          <p className="text-sm font-semibold text-red-200">{chosen.length} selected</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+            >
+              Clear selection
+            </button>
+            <button
+              type="button"
+              onClick={deleteChosen}
+              disabled={deleting}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-600 disabled:opacity-60"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> {deleting ? "Deleting…" : "Delete selected"}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="overflow-x-auto rounded-xl border border-white/10">
-        <table className="w-full min-w-[980px] text-left text-sm">
+        <table className="w-full min-w-[1020px] text-left text-sm">
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-400">
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="Select all orders"
+                  checked={allChosen}
+                  onChange={() => setSelected(allChosen ? new Set() : new Set(filtered.map((o) => o.id)))}
+                  className="h-4 w-4 cursor-pointer accent-red-500"
+                />
+              </th>
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Customer</th>
               <th className="px-4 py-3 font-medium">Plan</th>
@@ -126,6 +187,15 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
             {filtered.map((o) => (
               <Fragment key={o.id}>
               <tr className="border-b border-white/5 last:border-b-0">
+                <td className="px-4 py-3 align-top">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select order of ${o.name}`}
+                    checked={selected.has(o.id)}
+                    onChange={() => toggle(o.id)}
+                    className="mt-0.5 h-4 w-4 cursor-pointer accent-red-500"
+                  />
+                </td>
                 <td className="px-4 py-3 text-slate-400">{formatDate(o.createdAt)}</td>
                 <td className="px-4 py-3">
                   <p className="font-medium text-white">{o.name}</p>
@@ -210,7 +280,7 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
               </tr>
               {open === o.id && (
                 <tr className="border-b border-white/5 bg-white/[0.02]">
-                  <td colSpan={8} className="px-4 py-4">
+                  <td colSpan={9} className="px-4 py-4">
                     <CredentialsForm order={o} onSave={onCredentials} />
                   </td>
                 </tr>
@@ -219,7 +289,7 @@ export default function OrdersTable({ orders, onStatusChange, onCredentials, onD
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                   {requests.length === 0 && filter === "all" ? "No orders yet." : "No orders with this status."}
                 </td>
               </tr>

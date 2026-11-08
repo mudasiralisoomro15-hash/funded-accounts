@@ -60,6 +60,7 @@ import {
   updateOrderCredentials,
   updateOrderStatus,
   declineOrderPayment,
+  deleteOrders,
   updatePayoutStatus,
 } from "@/lib/db";
 import { diffConfig } from "@/lib/configDiff";
@@ -426,6 +427,18 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
     }
   }
 
+  async function handleDeleteOrders(ids: string[]) {
+    if (blocked()) return;
+    try {
+      await deleteOrders(ids);
+      const gone = new Set(ids);
+      setOrders((list) => list.filter((o) => !gone.has(o.id)));
+      setNotice({ type: "ok", text: `${ids.length} order${ids.length === 1 ? "" : "s"} deleted.` });
+    } catch (e) {
+      setNotice({ type: "err", text: e instanceof Error ? e.message : "Could not delete the orders." });
+    }
+  }
+
   async function handleCredentials(id: string, credentials: OrderCredentials) {
     if (needsApproval) throw new Error("Not allowed");
     await updateOrderCredentials(id, credentials);
@@ -624,7 +637,7 @@ function Workspace({ role, email }: { role: AdminLevel; email: string }) {
         {tab === "content" && <ContentEditor config={draft} onChange={setDraft} />}
         {tab === "users" && <UsersTable users={users} />}
         {tab === "orders" && (
-          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} onDecline={handleDecline} />
+          <OrdersTable orders={orders} onStatusChange={handleStatus} onCredentials={handleCredentials} onDecline={handleDecline} onDelete={handleDeleteOrders} />
         )}
         {tab === "coupons" && (
           <CouponsManager coupons={coupons} onSave={handleCouponSave} onDelete={handleCouponDelete} />

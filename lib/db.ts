@@ -216,6 +216,16 @@ export async function submitOrderPayment(id: string, txid: string): Promise<void
   await updateDoc(doc(getDb(), "orders", id), patch);
 }
 
+/** Admin: permanently deletes the selected orders. */
+export async function deleteOrders(ids: string[]): Promise<void> {
+  if (!isFirebaseConfigured) {
+    const gone = new Set(ids);
+    lsSet(KEYS.orders, lsGet<OrderRecord[]>(KEYS.orders, []).filter((o) => !gone.has(o.id)));
+    return;
+  }
+  await Promise.all(ids.map((id) => deleteDoc(doc(getDb(), "orders", id))));
+}
+
 /** Customer: cancels their own unpaid / declined order (it disappears from their dashboard). */
 export async function cancelMyOrder(id: string): Promise<void> {
   if (!isFirebaseConfigured) {
