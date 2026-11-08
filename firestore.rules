@@ -77,15 +77,20 @@ service cloud.firestore {
       allow create: if signedIn()
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.status == 'pending';
-      // Admins change anything. A customer may only send the payment TXID for
-      // their own order (pending/declined -> review) and nothing else.
+      // Admins change anything. A customer may only (a) send the payment TXID for
+      // their own order (pending/declined -> review) or (b) cancel it (pending/declined -> cancelled).
       allow update: if fullAdmin()
                     || (signedIn()
                         && resource.data.userId == request.auth.uid
                         && resource.data.status in ['pending', 'declined']
                         && request.resource.data.status == 'review'
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['status', 'txid', 'txSubmittedAt', 'declineReason']));
+                             .hasOnly(['status', 'txid', 'txSubmittedAt', 'declineReason']))
+                    || (signedIn()
+                        && resource.data.userId == request.auth.uid
+                        && resource.data.status in ['pending', 'declined']
+                        && request.resource.data.status == 'cancelled'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
       allow delete: if fullAdmin();
     }
 

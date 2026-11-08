@@ -66,7 +66,12 @@ export default function AccountCard({
 
       {needsPayment && (
         <div className="mt-3">
-          <PaymentPanel order={order} variant="dash" onSubmitted={onChange} />
+          <PaymentPanel
+            order={order}
+            variant="dash"
+            onSubmitted={onChange}
+            onCancelled={() => onChange?.({ status: "cancelled" })}
+          />
         </div>
       )}
 

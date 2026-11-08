@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, Clock, Copy, Loader2 } from "lucide-react";
 import { useSiteConfig } from "./SiteConfigProvider";
-import { submitOrderPayment } from "@/lib/db";
+import { cancelMyOrder, submitOrderPayment } from "@/lib/db";
 import type { OrderRecord } from "@/lib/types";
 
 /** Looks like an EVM (BEP20 / ERC20) transaction hash: 0x + 64 hex characters. */
@@ -28,6 +28,8 @@ interface PaymentPanelProps {
    * Without it the TXID is saved on the existing order.
    */
   onSubmitTxid?: (txid: string) => Promise<void>;
+  /** Dashboard: shows a "Cancel this order" button; called after the order was cancelled. */
+  onCancelled?: () => void;
 }
 
 function StepNo({ n, dash }: { n: number; dash: boolean }) {
@@ -42,7 +44,7 @@ function StepNo({ n, dash }: { n: number; dash: boolean }) {
   );
 }
 
-export default function PaymentPanel({ order, variant, onSubmitted, onSubmitTxid }: PaymentPanelProps) {
+export default function PaymentPanel({ order, variant, onSubmitted, onSubmitTxid, onCancelled }: PaymentPanelProps) {
   const { config } = useSiteConfig();
   const methods = config.payment.methods.filter((m) => m.enabled && m.address.trim());
   const [methodId, setMethodId] = useState<string | null>(null);
@@ -93,6 +95,19 @@ export default function PaymentPanel({ order, variant, onSubmitted, onSubmitTxid
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send your payment details. Try again.");
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelOrder() {
+    if (!window.confirm("Cancel this order? It will be removed from your dashboard.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await cancelMyOrder(order.id);
+      onCancelled?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not cancel the order. Try again.");
       setBusy(false);
     }
   }
@@ -233,6 +248,16 @@ export default function PaymentPanel({ order, variant, onSubmitted, onSubmitTxid
             I have paid, confirm
           </button>
           {config.payment.note && <p className={`text-center text-[11px] ${cls.sub}`}>{config.payment.note}</p>}
+          {onCancelled && (
+            <button
+              type="button"
+              onClick={cancelOrder}
+              disabled={busy}
+              className="w-full text-center text-xs font-semibold text-red-500 transition hover:text-red-400 disabled:opacity-50"
+            >
+              Cancel this order
+            </button>
+          )}
         </>
       )}
     </div>

@@ -14,6 +14,7 @@ export default function OverviewPage() {
   const { orders, error, patchOrder } = useMyOrders();
 
   const list = orders ?? [];
+  const shown = list.filter((o) => o.status !== "cancelled");
   const active = list.filter((o) => o.status === "active");
   const accounts = list.filter((o) => o.status !== "cancelled");
   const pending = list.filter((o) => o.status === "pending" || o.status === "review").length;
@@ -21,7 +22,7 @@ export default function OverviewPage() {
   const invested = list.filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.price, 0);
 
   const stats = [
-    { label: "Total orders", value: String(list.length) },
+    { label: "Total orders", value: String(shown.length) },
     { label: "Awaiting payment", value: String(pending) },
     { label: "Active accounts", value: String(active.length) },
     { label: "Total invested", value: formatUSD(invested) },
@@ -89,7 +90,7 @@ export default function OverviewPage() {
 
       <section className="dash-card mt-6">
         <h2 className="dash-text dash-border border-b px-5 py-4 font-semibold">Recent orders</h2>
-        {orders && orders.length > 0 ? (
+        {shown.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
@@ -102,7 +103,7 @@ export default function OverviewPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.slice(0, 8).map((o) => (
+                {shown.slice(0, 8).map((o) => (
                   <tr key={o.id} className="dash-border border-b last:border-b-0">
                     <td className="dash-sub px-5 py-3">{formatDate(o.createdAt)}</td>
                     <td className="dash-text px-5 py-3 font-medium">{o.modelName}</td>

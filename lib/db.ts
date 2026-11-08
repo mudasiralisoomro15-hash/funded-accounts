@@ -216,6 +216,18 @@ export async function submitOrderPayment(id: string, txid: string): Promise<void
   await updateDoc(doc(getDb(), "orders", id), patch);
 }
 
+/** Customer: cancels their own unpaid / declined order (it disappears from their dashboard). */
+export async function cancelMyOrder(id: string): Promise<void> {
+  if (!isFirebaseConfigured) {
+    const orders = lsGet<OrderRecord[]>(KEYS.orders, []).map((o) =>
+      o.id === id ? { ...o, status: "cancelled" as OrderStatus } : o
+    );
+    lsSet(KEYS.orders, orders);
+    return;
+  }
+  await updateDoc(doc(getDb(), "orders", id), { status: "cancelled" });
+}
+
 /** Admin: payment not received. The customer sees the reason and can pay again. */
 export async function declineOrderPayment(id: string, reason: string): Promise<void> {
   const patch = {
