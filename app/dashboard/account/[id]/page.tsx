@@ -89,7 +89,7 @@ export default function AccountDetailPage() {
         </p>
       ) : (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <Tile label="Balance" value={money(view.stats.balance)} />
             <Tile label="Equity" value={money(view.stats.equity)} />
             <Tile
@@ -105,7 +105,7 @@ export default function AccountDetailPage() {
             <Tile label="Today's profit" value={money(view.stats.todayProfit)} />
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="mt-6 grid gap-6 xl:grid-cols-2">
             <section>
               <h2 className="dash-text mb-3 font-semibold">Trading Objectives</h2>
               <ObjectivesList view={view} />

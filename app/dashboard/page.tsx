@@ -39,7 +39,7 @@ export default function OverviewPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="dash-card p-4">
             <p className="dash-sub text-xs font-medium">{s.label}</p>
@@ -79,7 +79,7 @@ export default function OverviewPage() {
             }
           />
         ) : (
-          <div className="grid gap-4 p-4 lg:grid-cols-2">
+          <div className="grid gap-4 p-3 sm:p-4 xl:grid-cols-2">
             {shown.map((o) => (
               <AccountCard key={o.id} order={o} onChange={(patch) => patchOrder(o.id, patch)} />
             ))}

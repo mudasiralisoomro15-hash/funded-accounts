@@ -100,7 +100,7 @@ export default function AccountCard({
             </Link>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2.5">
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             <div>
               <p className="dash-sub mb-1.5 text-[11px] font-medium">Today&apos;s profit</p>
               <p className="dash-soft dash-text rounded-lg px-2 py-2.5 text-center text-sm font-semibold">

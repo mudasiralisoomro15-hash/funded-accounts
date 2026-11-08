@@ -13,7 +13,6 @@ import {
   Home,
   Loader2,
   LogOut,
-  Menu,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -49,16 +48,16 @@ const NAV = [
 function BrandBlock() {
   const { config } = useSiteConfig();
   return (
-    <Link href="/dashboard" className="flex items-center gap-2.5 px-4 py-4">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15">
+    <Link href="/dashboard" className="flex items-center gap-2 px-3 py-4 pr-10 lg:gap-2.5 lg:px-4">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 lg:h-9 lg:w-9">
         <svg viewBox="0 0 32 32" fill="none" className="h-6 w-6" aria-hidden="true">
           <path d="M16 2.5 27.5 9v14L16 29.5 4.5 23V9L16 2.5Z" stroke="#10B981" strokeWidth="2" />
           <path d="M17.5 8 11 17h4.5l-1 7 6.5-9h-4.5l1-7Z" fill="#22C55E" />
         </svg>
       </span>
       <span>
-        <span className="dash-text block text-sm font-bold leading-tight">{config.brandName}</span>
-        <span className="dash-sub block text-xs">Trader Dashboard</span>
+        <span className="dash-text block truncate text-[13px] font-bold leading-tight lg:text-sm">{config.brandName}</span>
+        <span className="dash-sub block text-[10px] leading-tight lg:text-xs">Trader Dashboard</span>
       </span>
     </Link>
   );
@@ -88,18 +87,18 @@ function SidebarNav({
         </button>
       )}
       <BrandBlock />
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3" aria-label="Dashboard">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-3 lg:px-3" aria-label="Dashboard">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = href === "/dashboard" ? pathname === href : pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+              className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
                 active ? "dash-soft dash-primary-text" : "dash-sub dash-hover"
               }`}
             >
-              <Icon className="h-[18px] w-[18px]" />
+              <Icon className="h-4 w-4 shrink-0 lg:h-[18px] lg:w-[18px]" />
               {label}
             </Link>
           );
@@ -107,16 +106,16 @@ function SidebarNav({
         {isAdmin && (
           <Link
             href="/admin"
-            className="dash-sub dash-hover flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+            className="dash-sub dash-hover flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm"
           >
-            <ShieldCheck className="h-[18px] w-[18px]" />
+            <ShieldCheck className="h-4 w-4 shrink-0 lg:h-[18px] lg:w-[18px]" />
             Admin Panel
           </Link>
         )}
       </nav>
-      <div className="p-3">
-        <Link href="/#models" className="dash-btn w-full">
-          <Plus className="h-4 w-4" /> Start New Challenge
+      <div className="p-2 lg:p-3">
+        <Link href="/#models" className="dash-btn w-full !px-2 !text-xs lg:!px-4 lg:!text-sm">
+          <Plus className="h-4 w-4 shrink-0" /> <span className="truncate">Start New Challenge</span>
         </Link>
       </div>
     </div>
@@ -129,8 +128,7 @@ function ShellInner({ children }: { children: ReactNode }) {
   const { theme, toggle } = useDashTheme();
   const pathname = usePathname();
 
-  const [drawer, setDrawer] = useState(false);
-  // Desktop sidebar: always open on load; the user can close it with the button.
+  // Sidebar (like EZE Funded): always open next to the page on every screen; the button closes it until reload.
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menu, setMenu] = useState(false);
   const [banner, setBanner] = useState(true);
@@ -142,19 +140,8 @@ function ShellInner({ children }: { children: ReactNode }) {
   const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
 
   useEffect(() => {
-    setDrawer(false);
     setMenu(false);
   }, [pathname]);
-
-  // On a phone the sidebar is a slide-in panel: show it when the dashboard opens.
-  useEffect(() => {
-    try {
-      localStorage.removeItem("fx_sidebar");
-    } catch {
-      /* ignore */
-    }
-    if (window.innerWidth < 1024) setDrawer(true);
-  }, []);
 
   const root = `dash-root ${theme === "dark" ? "dash-dark" : "dash-light"}`;
 
@@ -203,39 +190,16 @@ function ShellInner({ children }: { children: ReactNode }) {
 
   return (
     <div className={root}>
-      {/* Desktop sidebar */}
+      {/* Sidebar: sits next to the page on every screen size */}
       <aside
-        className={`dash-surface dash-border fixed inset-y-0 left-0 z-30 hidden w-64 border-r ${
-          sidebarOpen ? "lg:block" : ""
+        className={`dash-surface dash-border fixed inset-y-0 left-0 z-30 w-[168px] border-r lg:w-64 ${
+          sidebarOpen ? "block" : "hidden"
         }`}
       >
         <SidebarNav pathname={pathname} isAdmin={isAdmin} onCollapse={toggleSidebar} />
       </aside>
 
-      {/* Mobile drawer */}
-      {drawer && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setDrawer(false)}
-          />
-          <aside className="dash-surface relative h-full w-64 shadow-xl">
-            <button
-              type="button"
-              aria-label="Close menu"
-              onClick={() => setDrawer(false)}
-              className="dash-sub dash-hover absolute right-2 top-3 rounded-lg p-2"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <SidebarNav pathname={pathname} isAdmin={isAdmin} />
-          </aside>
-        </div>
-      )}
-
-      <div className={sidebarOpen ? "lg:pl-64" : ""}>
+      <div className={sidebarOpen ? "pl-[168px] lg:pl-64" : ""}>
         {announcement.enabled && announcement.text && banner && (
           <div className="flex items-start justify-between gap-3 bg-blue-600 px-4 py-2 text-xs font-semibold text-white sm:text-sm">
             <span className="flex-1 text-center">{announcement.text}</span>
@@ -249,18 +213,10 @@ function ShellInner({ children }: { children: ReactNode }) {
         <header className="dash-surface dash-border sticky top-0 z-20 flex h-14 items-center justify-between border-b px-4 sm:px-6">
           <button
             type="button"
-            aria-label="Open menu"
-            onClick={() => setDrawer(true)}
-            className="dash-sub dash-hover rounded-lg p-2 lg:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
             aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             onClick={toggleSidebar}
-            className="dash-sub dash-hover hidden rounded-lg p-2 lg:block"
+            className="dash-sub dash-hover rounded-lg p-2"
           >
             {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
           </button>
@@ -322,7 +278,7 @@ function ShellInner({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl p-4 sm:p-6">
+        <main className="mx-auto max-w-6xl p-3 sm:p-6">
           {demoMode && (
             <p className="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-600">
               Demo mode: Firebase is not connected, so this data lives only in this browser.
