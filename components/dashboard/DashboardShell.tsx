@@ -128,16 +128,18 @@ function ShellInner({ children }: { children: ReactNode }) {
   const { theme, toggle } = useDashTheme();
   const pathname = usePathname();
 
-  // Sidebar (like EZE Funded): always open next to the page on every screen; the button closes it until reload.
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar: null = automatic (open on desktop, closed on a phone). The button overrides it until reload.
+  const [sidebarChoice, setSidebarChoice] = useState<boolean | null>(null);
   const [menu, setMenu] = useState(false);
   const [banner, setBanner] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const closeAuth = useCallback(() => setAuthOpen(false), []);
 
-  // Closing the sidebar lasts only until the page is reloaded: it is always open when the dashboard opens.
-  const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
+  const toggleSidebar = useCallback(
+    () => setSidebarChoice((prev) => (prev === null ? window.innerWidth < 1024 : !prev)),
+    []
+  );
 
   useEffect(() => {
     setMenu(false);
@@ -193,13 +195,13 @@ function ShellInner({ children }: { children: ReactNode }) {
       {/* Sidebar: sits next to the page on every screen size */}
       <aside
         className={`dash-surface dash-border fixed inset-y-0 left-0 z-30 w-[168px] border-r lg:w-64 ${
-          sidebarOpen ? "block" : "hidden"
+          sidebarChoice === null ? "hidden lg:block" : sidebarChoice ? "block" : "hidden"
         }`}
       >
         <SidebarNav pathname={pathname} isAdmin={isAdmin} onCollapse={toggleSidebar} />
       </aside>
 
-      <div className={sidebarOpen ? "pl-[168px] lg:pl-64" : ""}>
+      <div className={sidebarChoice === null ? "lg:pl-64" : sidebarChoice ? "pl-[168px] lg:pl-64" : ""}>
         {announcement.enabled && announcement.text && banner && (
           <div className="flex items-start justify-between gap-3 bg-blue-600 px-4 py-2 text-xs font-semibold text-white sm:text-sm">
             <span className="flex-1 text-center">{announcement.text}</span>
@@ -213,12 +215,21 @@ function ShellInner({ children }: { children: ReactNode }) {
         <header className="dash-surface dash-border sticky top-0 z-20 flex h-14 items-center justify-between border-b px-4 sm:px-6">
           <button
             type="button"
-            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            aria-label="Open or close sidebar"
+            title="Open or close sidebar"
             onClick={toggleSidebar}
             className="dash-sub dash-hover rounded-lg p-2"
           >
-            {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+            {sidebarChoice === null ? (
+              <>
+                <PanelLeftClose className="hidden h-5 w-5 lg:block" />
+                <PanelLeftOpen className="h-5 w-5 lg:hidden" />
+              </>
+            ) : sidebarChoice ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeftOpen className="h-5 w-5" />
+            )}
           </button>
 
           <div className="flex items-center gap-1.5">
